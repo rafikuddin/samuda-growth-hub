@@ -235,6 +235,12 @@ kbd{font:600 10px var(--f-body);color:var(--mut);border:1px solid var(--line);bo
 .cbp li[aria-selected="true"]{background:rgba(255,107,61,.28);color:#fff}
 .cbp li.more{color:var(--faint);font-style:italic;cursor:default;background:none}
 @media (max-width:480px){.cb{position:static}.cbp{left:12px;right:12px;width:auto;top:calc(100% + 6px)}}
+.tile.go{cursor:pointer}
+.tile.go:hover{border-color:color-mix(in srgb,var(--c) 60%,transparent)}
+.tile.go:focus-visible{outline:2px solid var(--c);outline-offset:3px}
+.golink{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:11.5px;font-weight:600;color:var(--c);letter-spacing:.02em}
+.golink svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+.tile.go:hover .golink svg{transform:translateX(3px)}
 .ftg{display:none}
 @media (max-width:900px){
   .fbar{padding:8px;gap:0 10px;border-radius:22px}
@@ -1162,7 +1168,12 @@ function renderExt(key){
     EXTCH.push({id:'cOv', series:[{n:'Order', c:'var(--c1)', v:E.mon.order}, {n:'Delivery', c:'var(--c2)', v:E.mon.delivery}, {n:'Collection', c:'var(--c4)', v:E.mon.collection}, {n:'Collection ' + (DATA.views.collection.pyear || ''), c:'var(--c7)', v:E.mon.collectionPY, line:true}], unit:'Cr'});
     EXTCH.push({id:'cTon', series:[{n:'Order TON', c:'var(--c3)', v:E.ton.order}, {n:'Delivery TON', c:'var(--c5)', v:E.ton.delivery, line:true}], unit:'TON'});
     return h + stripHTML(E, key, '<div class="k"><small>Growth basis</small><b>Like-for-like months</b></div>') +
-      '<section class="tiles four">' + E.kpis.map(function(t, i){ return tileHTML(t, i, M, true); }).join('') + '</section>' +
+      '<section class="tiles four">' + E.kpis.map(function(t, i){
+        var h = tileHTML(t, i, M, true), go = ['order', 'delivery', 'collection'][i];
+        if (!go) return h;      // Order, Delivery and Collection tiles open their own page
+        return h.replace('<article class="glass card lift tile', '<article role="link" tabindex="0" data-go="' + go + '" aria-label="Open ' + META[go].label + ' page" class="glass card lift tile go')
+          .replace(/<\/article>$/, '<span class="golink">' + META[go].label + ' details <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></article>');
+      }).join('') + '</section>' +
       '<section class="p2">' + panel('Order, delivery & collection by month (Cr)', legendHTML(EXTCH[0].series) + '<div class="chart" id="cOv"></div>') +
         panel('Sales volume by month (TON)', legendHTML(EXTCH[1].series) + '<div class="chart" id="cTon"></div>', 'Delivered ' + nf0.format(E.dton || 0) + ' TON') + '</section>' +
       '<section class="p2 rev">' + panel('Conversion of orders', '<div class="rings">' + ring(r.del, 'var(--c2)', 'Delivery / Order', 'share of order value delivered') + ring(r.coll, 'var(--c4)', 'Collection / Order', 'share of order value collected') + '</div>') +
@@ -1403,7 +1414,11 @@ function wireView(){
   q('#srch', openPal);
   q('#mnu', openNav);
   q('#thm', toggleTheme);
-  $$('[data-go]', stage).forEach(function(b){ b.addEventListener('click', function(){ location.hash = b.dataset.go; }); });
+  $$('[data-go]', stage).forEach(function(b){
+    var go = function(){ show(b.dataset.go); try { if (location.hash !== '#' + b.dataset.go) location.hash = b.dataset.go; } catch(e){} window.scrollTo(0, 0); };
+    b.addEventListener('click', go);
+    b.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
 }
 function emptyHTML(){
   var load = GHSTATE === 'loading';
