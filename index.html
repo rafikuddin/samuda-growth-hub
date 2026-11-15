@@ -944,8 +944,7 @@ function renderView(key){
   var ban = D.banner ? '<div class="banner ' + (D.banner.charAt(0) === '⚠' ? 'warn' : 'note') + '" data-rise>' + esc(D.banner) + '</div>' : '';
   var segb = VIEWS.map(function(k){ return '<button type="button" data-go="' + k + '" aria-pressed="' + (k === key) + '">' + META[k].label + '</button>'; }).join('');
   return headHTML(D) +
-    '<div class="strip glass" data-rise><div class="k"><small>View</small><b style="color:' + M.vc + '">' + M.label + '</b></div><div class="k"><small>Period</small><b>' + esc(D.pcy) + '</b></div><div class="k"><small>Compared with</small><b>' + esc(D.ppy) + '</b></div>' +
-    '<span class="info">' + cl(D.info) + '</span><div class="seg" role="group" aria-label="View">' + segb + '</div></div>' + ban +
+    ban +
     '<section class="tiles">' + D.tiles.map(function(t, i){ return tileHTML(t, i, M); }).join('') + '</section>' +
     '<section class="panels">' + segHTML(D, M) + monthlyHTML(D) + moversHTML(D, key) + '</section>' +
     '<section class="ins">' + D.ins.map(function(c, i){ return '<article class="glass card lift ic" data-rise style="--kc:' + KC[i] + '"><div class="k"><i></i>' + esc(c.k) + '</div><p>' + esc(c.t) + '</p></article>'; }).join('') + '</section>' +
@@ -1061,12 +1060,7 @@ var PALC = ['var(--c1)','var(--c2)','var(--c4)','var(--c3)','var(--c5)','var(--c
 var BUC = {'Adhesive':'var(--c1)', 'Thinner':'var(--c2)', 'DOP':'var(--c3)', 'Wood Lacquer':'var(--c4)', 'Trading-HO':'var(--c5)', 'Trading':'var(--c5)', 'Unmapped':'var(--c7)'};
 function bc(n, i){ return BUC[n] || PALC[i % PALC.length]; }
 var KIND = {up:['▲','GROWTH','var(--good)'], down:['▼','DECLINE','var(--bad)'], warn:['!','WATCH','var(--gold)'], info:['i','NOTE','var(--info)']};
-function stripHTML(E, key, extra){
-  var M = META[key];
-  return '<div class="strip glass" data-rise><div class="k"><small>View</small><b style="color:' + M.vc + '">' + M.label + '</b></div>' +
-    '<div class="k"><small>Period</small><b>' + esc(E.period || DATA.period || '') + '</b></div>' + (extra || '') +
-    '<span class="info">' + esc(E.info) + '</span></div>';
-}
+function stripHTML(){ return ''; }   // summary strip removed on request
 function panel(title, body, sub, cls){
   return '<section class="glass card panel ' + (cls || '') + '" data-rise><div class="ph"><h2>' + esc(title) + '</h2>' + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</div>' + body + '</section>';
 }
