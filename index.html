@@ -88,6 +88,12 @@ button{font:inherit;color:inherit}
 .av{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font:700 12px var(--f-display);color:#fff;background:linear-gradient(145deg,#F5B81B,#FF6B3D);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
 .who b{display:block;color:var(--ink);font-weight:600;font-size:12px} .who small{font-size:10.5px;color:var(--faint)}
 
+.scrim{display:none;position:fixed;inset:0;z-index:55;background:rgba(8,5,8,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity .28s,visibility 0s .28s}
+.scrim.on{opacity:1;visibility:visible;transition:opacity .28s}
+.ib.mnu{display:none}
+.side .cls{display:none;margin-left:auto;width:36px;height:36px}
+@media (max-width:900px){.side .cls{display:grid} .brand em{display:none}}
+
 /* ---------- stage + top bar ---------- */
 .wrap{min-width:0}
 .stage{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px;min-width:0}
@@ -222,7 +228,7 @@ kbd{font:600 10px var(--f-body);color:var(--mut);border:1px solid var(--line);bo
 .cbp{position:absolute;left:0;top:calc(100% + 6px);z-index:20;width:max(100%,340px);padding:8px;border-radius:16px;border:1px solid var(--rim);background:#2A222B;box-shadow:0 18px 40px rgba(0,0,0,.5)}
 .cbp input{width:100%;height:38px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.07);color:var(--ink);padding:0 12px;font:13px var(--f-body)}
 .cbp input:focus{outline:0;border-color:rgba(255,120,80,.8);box-shadow:0 0 0 3px rgba(255,107,61,.22)}
-.cbp ul{list-style:none;margin:6px 0 0;padding:0;max-height:300px;overflow-y:auto}
+.cbp ul{position:relative;list-style:none;margin:6px 0 0;padding:0;max-height:300px;overflow-y:auto}
 .cbp li{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:8px 10px;border-radius:9px;font-size:12.5px;color:var(--ink);cursor:pointer}
 .cbp li small{flex:none;font-size:10.5px;color:var(--faint)}
 .cbp li:hover{background:rgba(255,255,255,.07)}
@@ -336,18 +342,16 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 }
 @media (max-width:900px){
   .app{grid-template-columns:minmax(0,1fr);gap:14px;padding-block:12px}
-  .side{position:relative;top:0;height:auto;border-radius:26px;padding:10px;gap:8px;flex-direction:column}
-  .side .sec,.side .gap,.side-foot,.brand small,.brand em{display:none}
-  .brand{padding:2px 6px}
-  .menu{flex-direction:row;gap:2px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-  .menu::-webkit-scrollbar{display:none}
-  .msec{display:none}
-  .mi{flex:1 0 76px;min-width:76px;flex-direction:column;justify-content:center;gap:3px;height:54px;padding:0 4px;font-size:11px;text-align:center}
+  /* side menu becomes a slide-in drawer, opened with the menu button in the header */
+  .side{position:fixed;left:10px;top:10px;bottom:10px;width:min(290px,84vw);height:auto;z-index:60;border-radius:28px;
+    background:linear-gradient(180deg,rgba(44,36,46,.97),rgba(27,22,29,.97));transform:translateX(calc(-100% - 24px));visibility:hidden;
+    transition:transform .34s cubic-bezier(.16,1,.3,1),visibility 0s .34s}
+  .side.open{transform:none;visibility:visible;transition:transform .34s cubic-bezier(.16,1,.3,1)}
+  .scrim{display:block}
+  .mi{height:46px;font-size:14.5px}
   .p2.even{grid-template-columns:minmax(0,1fr)}
-  .mi span{flex:none} .mi i{display:none} .mi svg{width:18px;height:18px}
-  .bar-top{position:relative;top:0;border-radius:28px;padding:12px 12px 12px 18px}
-  .bar-top .ib{display:none} .strip .seg{display:none}
-  .strip{border-radius:22px;padding:12px 18px} .strip .info{margin-left:0;flex-basis:100%}
+  .bar-top{position:relative;top:0;border-radius:28px;padding:12px 12px 12px 12px}
+  .bar-top .ib{display:none} .bar-top .ib.mnu{display:grid}
 }
 @media (max-width:760px){
   .panels{grid-template-columns:minmax(0,1fr)}
@@ -389,8 +393,9 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 <div class="grain" aria-hidden="true"></div>
 
 <div class="app" id="app">
-  <aside class="side glass">
-    <div class="brand"><div class="logo" aria-hidden="true">S</div><div><b>Growth Hub</b><small>Samuda Spec-Chem</small></div><em>BI</em></div>
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
+  <aside class="side glass" id="side">
+    <div class="brand"><div class="logo" aria-hidden="true">S</div><div><b>Growth Hub</b><small>Samuda Spec-Chem</small></div><em>BI</em><button class="ib cls" id="navx" type="button" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
     <div>
       <nav class="menu" id="menu" aria-label="Views">
         <span class="pill" id="pill" aria-hidden="true"></span>
@@ -848,7 +853,6 @@ function paint(){ pill.style.clipPath = 'inset(' + st.t + 'px ' + st.r + 'px ' +
 function edges(btn){
   var W = menu.scrollWidth, H = menu.scrollHeight;          // the menu scrolls sideways on phones
   pill.style.right = 'auto'; pill.style.bottom = 'auto'; pill.style.width = W + 'px'; pill.style.height = H + 'px';
-  if (menu.scrollWidth > menu.clientWidth + 2 && btn.scrollIntoView) { try { btn.scrollIntoView({block:'nearest', inline:'nearest', behavior:reduce ? 'auto' : 'smooth'}); } catch(e){} }
   return {l:btn.offsetLeft, t:btn.offsetTop, r:W - (btn.offsetLeft + btn.offsetWidth), b:H - (btn.offsetTop + btn.offsetHeight)};
 }
 function glide(k, to, dur){
@@ -865,6 +869,12 @@ function slidePill(btn, animate){
     var lead = fwd ? b : a, trail = fwd ? a : b;       // moving down/right: the far edge leads
     glide(lead, to[lead], .36); glide(trail, to[trail], .55);
   });
+}
+/* phones: slide the menu strip sideways to the chosen view. Only the strip moves, never the page. */
+function menuReveal(btn){
+  if (!btn || menu.scrollWidth <= menu.clientWidth + 2) return;
+  var x = Math.max(0, btn.offsetLeft - (menu.clientWidth - btn.offsetWidth) / 2);
+  try { menu.scrollTo({left:x, behavior:reduce ? 'auto' : 'smooth'}); } catch(e){ menu.scrollLeft = x; }
 }
 function setActive(key){
   var cur = null;
@@ -959,7 +969,7 @@ function footHTML(){
 }
 function headHTML(D){
   var cl = function(s){ return esc(String(s || '').replace(/\s{2,}/g, ' ')); };
-  return '<header class="bar-top glass" data-rise><div class="tt"><h1>' + cl(D.title) + '</h1><p><b>' + cl(D.sub) + '</b>&nbsp;&nbsp;·&nbsp;&nbsp;' + cl(D.cmp) + '</p></div>' +
+  return '<header class="bar-top glass" data-rise><button class="ib mnu" id="mnu" type="button" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><div class="tt"><h1>' + cl(D.title) + '</h1><p><b>' + cl(D.sub) + '</b>&nbsp;&nbsp;·&nbsp;&nbsp;' + cl(D.cmp) + '</p></div>' +
     '<button class="search" id="srch" type="button" aria-label="Jump to"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Jump to…</span><kbd>Ctrl K</kbd></button>' +
     '<button class="ib" id="thm" type="button" aria-label="Switch light or dark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg></button>' +
     '<button class="cta" id="cta" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.7-6"/><path d="M20.5 4v4.8h-4.8"/></svg><span>Update data</span></button>' +
@@ -1024,8 +1034,9 @@ function cbFill(q){
   var ul = $('#cbl', stage);
   ul.innerHTML = cbItems.map(function(c, i){ return '<li role="option" data-i="' + i + '" aria-selected="' + (i === cbSel) + '">' + esc(c[1]) + (c[0] ? '<small>' + esc(c[0]) + '</small>' : '') + '</li>'; }).join('') +
     (hit.length > CAP ? '<li class="more">' + nf0.format(hit.length - CAP) + ' more – keep typing to narrow</li>' : '') + (cbItems.length ? '' : '<li class="more">No distributor matches</li>');
-  var s = $('li[aria-selected="true"]', ul); if (s && s.scrollIntoView) s.scrollIntoView({block:'nearest'});
+  cbShow(ul);
 }
+function cbShow(ul){ var li = $('li[aria-selected="true"]', ul); if (!li) return; var t = li.offsetTop; if (t < ul.scrollTop) ul.scrollTop = t; else if (t + li.offsetHeight > ul.scrollTop + ul.clientHeight) ul.scrollTop = t + li.offsetHeight - ul.clientHeight; }
 function cbOpen(){ var p = $('#cbp', stage); if (!p) return; p.hidden = false; $('#cbb', stage).setAttribute('aria-expanded', 'true'); var q = $('#cbq', stage); q.value = ''; cbFill(''); q.focus(); }
 function cbClose(){ var p = $('#cbp', stage); if (!p || p.hidden) return; p.hidden = true; $('#cbb', stage).setAttribute('aria-expanded', 'false'); }
 function cbPick(v){ F.dist = v; applyFilters(); var b = $('#cbb', stage); if (b) b.focus(); }
@@ -1038,7 +1049,7 @@ function wireCb(){
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault(); if (!cbItems.length) return;
       cbSel = (cbSel + (e.key === 'ArrowDown' ? 1 : cbItems.length - 1)) % cbItems.length;
-      $$('li[role="option"]', ul).forEach(function(li, i){ li.setAttribute('aria-selected', i === cbSel); if (i === cbSel) li.scrollIntoView({block:'nearest'}); });
+      $$('li[role="option"]', ul).forEach(function(li, i){ li.setAttribute('aria-selected', i === cbSel); }); cbShow(ul);
     } else if (e.key === 'Enter') { e.preventDefault(); if (cbItems[cbSel]) cbPick(cbItems[cbSel][0]); }
     else if (e.key === 'Escape') { e.stopPropagation(); cbClose(); b.focus(); }
   });
@@ -1372,6 +1383,7 @@ function wireView(){
   var q = function(s, f){ var e = $(s, stage); if (e) e.addEventListener('click', f); };
   q('#cta', function(){ location.hash = 'update-data'; });
   q('#srch', openPal);
+  q('#mnu', openNav);
   q('#thm', toggleTheme);
   $$('[data-go]', stage).forEach(function(b){ b.addEventListener('click', function(){ location.hash = b.dataset.go; }); });
 }
@@ -1407,7 +1419,7 @@ function show(key){
   (function loop(){
     if (current === want) { busy = false; return; }
     var k = want, first = current === null && !stage.firstChild;
-    var btn = setActive(k); if (btn) slidePill(btn, !first && !fresh);
+    var btn = setActive(k); if (btn) slidePill(btn, !first && !fresh); menuReveal(btn);
     fresh = false;
     var p = first ? Promise.resolve() : leave();
     p.then(function(){
@@ -1445,8 +1457,15 @@ function wireUpdate(){
     });
   });
 }
+/* mobile drawer */
+var sideEl = $('#side'), scrim = $('#scrim');
+function openNav(){ sideEl.classList.add('open'); scrim.classList.add('on'); document.body.style.overflow = 'hidden'; var m = $('#mnu', stage); if (m) m.setAttribute('aria-expanded', 'true'); var c = $('.mi[aria-current]', menu); if (c) c.focus({preventScroll:true}); }
+function closeNav(){ if (!sideEl.classList.contains('open')) return; sideEl.classList.remove('open'); scrim.classList.remove('on'); document.body.style.overflow = ''; var m = $('#mnu', stage); if (m) m.setAttribute('aria-expanded', 'false'); }
+scrim.addEventListener('click', closeNav);
+$('#navx').addEventListener('click', closeNav);
 $$('.mi', menu).forEach(function(b){
   b.addEventListener('click', function(){
+    closeNav();
     show(b.dataset.view);
     try { if (location.hash !== '#' + b.dataset.view) location.hash = b.dataset.view; } catch(e){}
   });
@@ -1455,8 +1474,8 @@ window.addEventListener('hashchange', function(){ show((location.hash || '').sli
 var rz, lastW = window.innerWidth; window.addEventListener('resize', function(){
   clearTimeout(rz);
   rz = setTimeout(function(){
+    if (Math.abs(window.innerWidth - lastW) < 2) return; lastW = window.innerWidth; if (lastW > 900) closeNav();   // address bar show/hide changes height only
     var b = $('.mi[aria-current]', menu); if (b) slidePill(b, false);
-    if (Math.abs(window.innerWidth - lastW) < 2) return; lastW = window.innerWidth;
     if (current && VIEWS.indexOf(current) > -1) drawMonthly(current);
     else if (current && ALL.indexOf(current) > -1) drawExt();
   }, 140);
@@ -1485,7 +1504,7 @@ ovP.addEventListener('mousedown', function(e){ if (e.target === ovP) closePal();
 ovU.addEventListener('mousedown', function(e){ if (e.target === ovU) closeUpd(); });
 document.addEventListener('keydown', function(e){
   if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openPal(); }
-  else if (e.key === 'Escape') { closePal(); closeUpd(); }
+  else if (e.key === 'Escape') { closePal(); closeUpd(); closeNav(); }
 });
 var LST = 'samuda-growth-hub-theme';
 function applyTheme(t){ if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }
