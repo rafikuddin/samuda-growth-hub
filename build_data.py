@@ -1,27 +1,35 @@
 #!/usr/bin/env python3
 """
-Samuda Growth Hub - build data.json from the Excel workbook.
+Samuda Growth Hub - build data.json from the Excel files.
 
 Usage:
-    python build_data.py "Samuda_Growth_Dashboard_v5.xlsx"            # writes data.json next to this script
-    python build_data.py "Samuda_Growth_Dashboard_v5.xlsx" out.json
+    python build_data.py                      # reads every .xlsx in this folder, writes data.json here
+    python build_data.py file1.xlsx file2.xlsx file3.xlsx [out.json]
+
+The script finds what it needs by SHEET NAME / COLUMN NAMES, so the file names do not matter:
+    SALES_ORDER, DELIVERY_ORDER, PRIMARY_SALES_COLLECTION   (the dump file)
+    SKU_MASTER                                              (the product master file)
+    customer master = a sheet called CUSTOMER_MASTER, or every sheet that has the columns
+                      DISTRIBUTOR_CODE and REGION_BASE (e.g. the Adhesive / Corporate / Thinner sheets)
+The old single workbook (Samuda_Growth_Dashboard_v5.xlsx) still works too.
 
 data.json holds monthly totals per customer and product (no order lines, no prices),
 plus the open order lines for the Pending delivery view. The web page does all the
 sums itself, so every view can be filtered by Year, Month, Business Unit, Region,
 Territory, Distributor and Product Category.
 
-Rules are the same as the Excel workbook:
+Rules:
   Order      = SALES_ORDER "Total Amount" by Order Date (all statuses)
   Delivery   = DELIVERY_ORDER "Delivery Amount" by Delivery Date
   Collection = PRIMARY_SALES_COLLECTION "Collection Amount" by Collection Date (all collection types)
   Product    -> SKU_MASTER (Product Code = ERP_SKU_CODE): segment, SKU group, category, TON factor
-  Customer   -> CUSTOMER_MASTER (Customer Code = DISTRIBUTOR_CODE): BU, region, territory (ASM_BASE), channel
+  Customer   -> customer master (Customer Code = DISTRIBUTOR_CODE): BU, region, territory (ASM_BASE), channel
 
 Needs: Python 3.9+, pandas, openpyxl   (pip install pandas openpyxl)
 """
-import json, sys, os, datetime as dt
+import json, sys, os, glob, datetime as dt
 import pandas as pd
+import openpyxl
 
 THRESHOLD = 0.8                 # Settings: Top contribution threshold
 RUBBER_KEY = 'Rubber Adhesive'  # Settings: Rubber-adhesive keyword (matched in SKU group)
@@ -32,13 +40,80 @@ def s(x):
     return '' if x is None or (isinstance(x, float) and pd.isna(x)) else str(x).strip()
 
 
+DATA_SHEETS = ['SALES_ORDER', 'DELIVERY_ORDER', 'PRIMARY_SALES_COLLECTION']
+NEED = {'SALES_ORDER': ['Order Date', 'Order Number', 'Customer Code', 'Product Code', 'Quantity', 'Total Amount', 'Sale Type', 'Status', 'Invoice Status', 'Unit Price', 'Discount%'],
+        'DELIVERY_ORDER': ['Delivery Date', 'Sale Order', 'Customer Code', 'Product Code', 'Delivery Quantity', 'Delivery Amount', 'Sales Type'],
+        'PRIMARY_SALES_COLLECTION': ['COLLECTION_DATE', 'CUSTOMER_CODE', 'CUSTOMER_NAME', 'COLLECTION_AMOUNT'],
+        'SKU_MASTER': ['ERP_SKU_CODE', 'ERP_SKU_NAME', 'SKU_SEGMENT', 'BU_CATEGORY', 'SKU_CATEGORY', 'SKU_GROUP', 'TON_COV_FACTOR'],
+        'CUSTOMER_MASTER': ['DISTRIBUTOR_CODE', 'DISTRIBUTOR_NAME', 'BU', 'REGION_BASE', 'ASM_BASE', 'DISTRIBUTION_CHANNEL']}
+
+
+def load_sources(paths):
+    """Find the five tables in the given workbooks (by sheet name / header) and read them."""
+    books = []
+    for p in paths:
+        try:
+            wb = openpyxl.load_workbook(p, read_only=True, data_only=True)
+        except Exception as e:
+            print('  skipped %s (%s)' % (os.path.basename(p), e))
+            continue
+        heads = {}
+        for ws in wb.worksheets:
+            row = next(ws.iter_rows(min_row=1, max_row=1, values_only=True), ())
+            heads[ws.title] = [s(c) for c in (row or ())]
+        wb.close()
+        books.append({'path': p, 'heads': heads, 'dump': any(n in heads for n in DATA_SHEETS), 'mtime': os.path.getmtime(p)})
+    if not books:
+        sys.exit('No Excel file found. Put the .xlsx files in the same folder as build_data.py.')
+
+    def best(cands, master=False):
+        # masters: prefer a dedicated master file over the big dump/workbook; then the newest file
+        return sorted(cands, key=lambda b: ((b['dump'] if master else False), -b['mtime'], b['path']))[0]
+
+    plan = {}
+    for name in DATA_SHEETS + ['SKU_MASTER']:
+        c = [b for b in books if name in b['heads']]
+        if c:
+            plan[name] = (best(c, name == 'SKU_MASTER'), [name])
+    c = [b for b in books if 'CUSTOMER_MASTER' in b['heads']]
+    loose = [b for b in books if any({'DISTRIBUTOR_CODE', 'REGION_BASE'} <= set(h) for n, h in b['heads'].items() if n != 'CUSTOMER_MASTER')]
+    cand = [(b, ['CUSTOMER_MASTER']) for b in c] + [(b, [n for n, h in b['heads'].items() if {'DISTRIBUTOR_CODE', 'REGION_BASE'} <= set(h)]) for b in loose if b not in c]
+    if cand:
+        pick = best([x[0] for x in cand], True)
+        plan['CUSTOMER_MASTER'] = [x for x in cand if x[0] is pick][0]
+    missing = [n for n in DATA_SHEETS + ['SKU_MASTER', 'CUSTOMER_MASTER'] if n not in plan]
+    if missing:
+        found = '; '.join('%s: %s' % (os.path.basename(b['path']), ', '.join(b['heads'])) for b in books)
+        sys.exit('Cannot find: %s.\nSheets found -> %s' % (', '.join(missing), found))
+
+    sh, cache = {}, {}
+    for name, (b, sheets) in plan.items():
+        print('  %-26s <- %s [%s]' % (name, os.path.basename(b['path']), ', '.join(sheets)))
+        for sn in sheets:
+            if (b['path'], sn) not in cache:
+                want = [x for x in sheets if (b['path'], x) not in cache]
+                got = pd.read_excel(b['path'], engine='openpyxl', sheet_name=[x for n2, (b2, s2) in plan.items() if b2 is b for x in s2])
+                for k, v in got.items():
+                    cache[(b['path'], k)] = v
+        df = pd.concat([cache[(b['path'], sn)] for sn in sheets], ignore_index=True) if len(sheets) > 1 else cache[(b['path'], sheets[0])]
+        df.columns = [s(c) for c in df.columns]
+        df = df.loc[:, ~df.columns.duplicated()]
+        lack = [c for c in NEED[name] if c not in df.columns]
+        if lack:
+            sys.exit('%s in %s is missing column(s): %s' % (name, os.path.basename(b['path']), ', '.join(lack)))
+        sh[name] = df
+    return sh
+
+
 def main():
-    if len(sys.argv) < 2:
-        sys.exit(__doc__)
-    src = sys.argv[1]
-    out = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data.json')
-    print('Reading workbook (about 30 seconds)...')
-    sh = pd.read_excel(src, engine='openpyxl', sheet_name=['SALES_ORDER', 'DELIVERY_ORDER', 'PRIMARY_SALES_COLLECTION', 'SKU_MASTER', 'CUSTOMER_MASTER'])
+    here = os.path.dirname(os.path.abspath(__file__))
+    args = sys.argv[1:]
+    out = os.path.join(here, 'data.json')
+    if args and args[-1].lower().endswith('.json'):
+        out = args.pop()
+    paths = args or sorted(p for p in glob.glob(os.path.join(here, '*.xls[xm]')) if not os.path.basename(p).startswith('~$'))
+    print('Reading %d Excel file(s) (about 30 seconds)...' % len(paths))
+    sh = load_sources(paths)
 
     # ---------- masters ----------
     skm = sh['SKU_MASTER']

@@ -8,10 +8,11 @@ Animated sales dashboard for Samuda Spec-Chem Limited (Adhesive, Thinner, DOP), 
 |---|---|
 | `index.html` | The dashboard page: 8 views, with the filter bar (Year, Month, Business Unit, Region, Territory, Distributor, Product Category) at the top of every view |
 | `data.json` | All the numbers. The page reads this file every time it opens |
-| `build_data.py` | Makes `data.json` from the Excel workbook (keep it here or only on your computer) |
+| `build_data.py` | Makes `data.json` from the Excel files (dump, product master, customer master) |
 | `update_data.bat` | Double-click on Windows to run `build_data.py` |
+| `.github/workflows/update-dashboard.yml` | The automatic update: rebuilds `data.json` and republishes after every upload |
 
-Do **not** upload the Excel workbook.
+The Excel files are needed in the repository only for the automatic update (section C).
 
 ## A. First-time GitHub setup
 
@@ -24,29 +25,40 @@ Do **not** upload the Excel workbook.
 
 ## B. Turn on GitHub Pages
 
-1. In the repository open **Settings** (top menu) → **Pages** (left menu).
-2. Under **Build and deployment → Source** choose **Deploy from a branch**.
-3. Under **Branch** choose **main** and **/ (root)** → **Save**.
-4. Wait 1–2 minutes and refresh the page. The link appears at the top:
+1. Add the workflow file: **Add file → Create new file**, type the name `.github/workflows/update-dashboard.yml`, paste the contents of `update-dashboard.yml`, **Commit changes**.
+2. Open **Settings** (top menu) → **Pages** (left menu).
+3. Under **Build and deployment → Source** choose **GitHub Actions**.
+4. Open the **Actions** tab → **Update dashboard** → **Run workflow**. After the green tick the link is shown in the run and in Settings → Pages:
    `https://<your-username>.github.io/samuda-growth-hub/`
 5. Open the link. Bottom-left of the dashboard should say **GitHub data.json** with the build date.
 
-## C. One-time setup on your computer (for updating the data)
+## C. Automatic update (GitHub does the work)
 
-1. Install Python 3 from https://www.python.org/downloads/ and tick **Add python.exe to PATH** in the installer.
-2. Open **Command Prompt** and run: `pip install pandas openpyxl`
-3. Put `build_data.py`, `update_data.bat` and `Samuda_Growth_Dashboard_v5.xlsx` in the same folder.
+Needs `.github/workflows/update-dashboard.yml` in the repository and **Settings → Pages → Source = GitHub Actions**.
 
-## D. Updating the numbers (every time)
+1. On GitHub: **Add file → Upload files**. Drop the three Excel files:
+   * the dump (sheets `SALES_ORDER`, `PRIMARY_SALES_COLLECTION`, `DELIVERY_ORDER`)
+   * the product master (sheet `SKU_MASTER`)
+   * the customer master (sheets `Adhesive`, `Corporate`, `Thinner`)
+2. Press **Commit changes**.
+3. GitHub builds a new `data.json` and republishes the dashboard in about 2–3 minutes. Watch it in the **Actions** tab (green tick = done).
 
-1. Paste the new dump into the workbook (or Data → Refresh All) and **save** it.
-2. Double-click `update_data.bat`. After about 30 seconds a new `data.json` appears in the folder.
-3. On GitHub: **Add file → Upload files** → drop `data.json` → **Commit changes** (it replaces the old one).
-4. After a minute open the dashboard and press **Update data → Reload from GitHub** (or Ctrl+F5).
+Rules:
+* Keep the **same file names** every time, so the new upload replaces the old file. The script finds the data by sheet name, so the file name itself can be anything, but two dump files with different names in the repository would confuse it.
+* You can upload only the file that changed (for example only the dump).
+* GitHub's website refuses files over 25 MB. The dump is already about 24 MB; when it grows past the limit, use section D instead (or GitHub Desktop).
+* In a public repository the uploaded Excel files can be downloaded by anyone, with every order line, price and customer.
+
+## D. Manual update (data stays on your computer)
+
+One-time: install Python 3 from https://www.python.org/downloads/ (tick **Add python.exe to PATH**), then run `pip install pandas openpyxl` in Command Prompt.
+
+1. Put the three Excel files in the same folder as `build_data.py` and `update_data.bat`.
+2. Double-click `update_data.bat`. After about 40 seconds a new `data.json` appears.
+3. On GitHub: **Add file → Upload files** → drop `data.json` → **Commit changes**.
 
 ## Notes
 
-* If the workbook file name changes, edit the name inside `update_data.bat`.
 * The page must be opened from the GitHub Pages link. Opened as a file from your computer it cannot read `data.json`.
 * Order, Delivery and Collection use the workbook's rules (Total Amount / Delivery Amount / Collection Amount, top 80%, rubber adhesive keyword). With no filter they match the Excel dashboard.
 * Growth is like-for-like: only months with data in both years are compared. Delivery growth shows n/a until 2025 delivery rows are added.
