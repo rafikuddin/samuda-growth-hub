@@ -235,6 +235,18 @@ kbd{font:600 10px var(--f-body);color:var(--mut);border:1px solid var(--line);bo
 .cbp li[aria-selected="true"]{background:rgba(255,107,61,.28);color:#fff}
 .cbp li.more{color:var(--faint);font-style:italic;cursor:default;background:none}
 @media (max-width:480px){.cb{position:static}.cbp{left:12px;right:12px;width:auto;top:calc(100% + 6px)}}
+.ftg{display:none}
+@media (max-width:900px){
+  .fbar{padding:8px;gap:0 10px;border-radius:22px}
+  .fbar.open{padding:8px 12px 14px;gap:10px}
+  .ftg{display:flex;align-items:center;gap:9px;flex:1 1 100%;min-width:0;height:40px;padding:0 10px;border:0;border-radius:14px;background:none;color:var(--ink);cursor:pointer;text-align:left}
+  .ftg svg{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;color:var(--mut)}
+  .ftg b{font-weight:600;font-size:13px}
+  .ftg i{font-style:normal;font-size:10.5px;font-weight:700;min-width:19px;height:19px;padding:0 5px;border-radius:999px;display:grid;place-items:center;color:#fff;background:var(--accent)}
+  .ftg span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--faint);text-align:right}
+  .ftg .chv{transition:transform .25s} .fbar.open .ftg .chv{transform:rotate(180deg)}
+  .fbar:not(.open) .fl,.fbar:not(.open) .frs{display:none}
+}
 .frs{height:36px;padding:0 16px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);font-weight:600;font-size:12px;cursor:pointer}
 .frs:hover{background:rgba(255,255,255,.12)} .frs:disabled{opacity:.4;cursor:default}
 @media (max-width:480px){.fl,.fl.wide{flex:1 1 44%}}
@@ -1011,7 +1023,11 @@ function filterHTML(){
   var L = filterLists(), any = F.bu || F.reg || F.ter || F.dist || F.cat || F.month !== 'auto' || F.year !== IX.defYear;
   var sel = function(id, label, body, wide){ return '<label class="fl' + (wide ? ' wide' : '') + '"><span>' + label + '</span><select data-f="' + id + '"' + (F[id] && id !== 'year' && !(id === 'month' && F.month === 'auto') ? ' class="on"' : '') + '>' + body + '</select></label>'; };
   var all = function(list, cur){ return opt('', 'All', cur) + list.map(function(x){ return opt(x, x, cur); }).join(''); };
-  return '<div class="fbar glass" id="fbar">' +
+  var ml = F.month === 'auto' ? 'Auto' : (F.month.indexOf('ytd-') === 0 ? 'YTD ' : '') + MONS[+F.month.split('-')[1] - 1];
+  var nAct = [F.bu, F.reg, F.ter, F.dist, F.cat].filter(Boolean).length, ft = filterText();
+  return '<div class="fbar glass' + (FOPEN ? ' open' : '') + '" id="fbar">' +
+    '<button class="ftg" id="ftg" type="button" aria-expanded="' + FOPEN + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><b>Filters</b>' +
+    (nAct ? '<i>' + nAct + '</i>' : '') + '<span>' + esc(F.year + ' · ' + ml + (ft ? ' · ' + ft.replace(/\s{2,}/g, ' ') : '')) + '</span><svg class="chv" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' +
     sel('year', 'Year', IX.years.map(function(y){ return opt(y, y, F.year); }).join('')) + sel('month', 'Month', monthOptions()) +
     sel('bu', 'Business Unit', all(L.bu, F.bu)) + sel('reg', 'Region', all(L.reg, F.reg)) + sel('ter', 'Territory', all(L.ter, F.ter)) +
     cbHTML(L) +
@@ -1056,8 +1072,10 @@ function wireCb(){
   ul.addEventListener('click', function(e){ var li = e.target.closest('li[data-i]'); if (li) cbPick(cbItems[+li.dataset.i][0]); });
 }
 document.addEventListener('mousedown', function(e){ var d = document.getElementById('cbd'); if (d && !d.contains(e.target)) cbClose(); });
+var FOPEN = false;   // phones: filter panel folded until the Filters button is tapped
 function wireFilters(){
   wireCb();
+  var tg = $('#ftg', stage); if (tg) tg.addEventListener('click', function(){ FOPEN = !FOPEN; cbClose(); $('#fbar', stage).classList.toggle('open', FOPEN); tg.setAttribute('aria-expanded', FOPEN); });
   $$('#fbar select', stage).forEach(function(el){ el.addEventListener('change', function(){
     var k = el.dataset.f; F[k] = k === 'year' ? +el.value : el.value;
     applyFilters(k);
