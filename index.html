@@ -517,6 +517,9 @@ function prep(R){
   var lm = pd(R.meta.order.lastAmt || R.meta.order.lastAny);
   X.defYear = lm ? lm.getFullYear() : X.years[X.years.length - 1];
   X.meta = {O:R.meta.order, D:R.meta.delivery, C:R.meta.collection};
+  X.cHas = new Uint8Array(R.cust.length);          // customers that have at least one order, delivery, collection or pending line
+  ['O','D','C'].forEach(function(k){ var c = R[k].c; for (var i = 0; i < c.length; i++) X.cHas[c[i]] = 1; });
+  (R.P || []).forEach(function(l){ X.cHas[l[0]] = 1; });
   return X;
 }
 
@@ -968,7 +971,7 @@ function headHTML(D){
 function opt(v, t, sel){ return '<option value="' + esc(v) + '"' + (String(sel) === String(v) ? ' selected' : '') + '>' + esc(t) + '</option>'; }
 function uniq(a){ var m = {}, o = []; a.forEach(function(x){ if (x && !m[x]) { m[x] = 1; o.push(x); } }); return o.sort(function(p, q){ return p.localeCompare(q); }); }
 function filterLists(){
-  var cs = IX.R.cust.filter(function(c){ return c[6]; });
+  var cs = IX.R.cust.filter(function(c, i){ return c[6] && IX.cHas[i]; });   // only distributors that have data
   var L = {bu:uniq(cs.map(function(c){ return c[2]; }))};
   var a = cs.filter(function(c){ return !F.bu || c[2] === F.bu; });
   L.reg = uniq(a.map(function(c){ return regName(c[3]); }));
