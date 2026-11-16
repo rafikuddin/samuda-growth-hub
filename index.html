@@ -697,8 +697,12 @@ function filterText(){
 function autoTill(k, Y){
   var la = pd(IX.meta[k].lastAmt || IX.meta[k].lastAny); if (!la) return 0;
   if (la.getFullYear() > Y) return 12; if (la.getFullYear() < Y) return 0;
-  var eom = new Date(Y, la.getMonth() + 1, 0).getDate();
-  return la.getDate() >= eom - 4 ? la.getMonth() + 1 : la.getMonth();
+  return la.getMonth() + 1;                       // the latest month that has data, even if it is still running
+}
+/* is month m of year Y still running in the data of measure k (data stops before the month ends)? */
+function running(k, Y, m){
+  var la = pd(IX.meta[k].lastAmt || IX.meta[k].lastAny); if (!la || la.getFullYear() !== Y || la.getMonth() + 1 !== m) return null;
+  return la.getDate() < new Date(Y, m, 0).getDate() - 4 ? la : null;
 }
 function autoFrom(k, Y){
   var f = pd(IX.meta[k].first); if (!f) return 1;
@@ -706,7 +710,7 @@ function autoFrom(k, Y){
   return Math.min(12, f.getDate() <= 5 ? f.getMonth() + 1 : f.getMonth() + 2);
 }
 function pyCovered(k, Y, m){ var f = pd(IX.meta[k].first); return !!f && f <= new Date(Y - 1, m - 1, 6); }
-function commonTill(Y){ var t = ['O','D','C'].map(function(k){ return autoTill(k, Y); }).filter(function(x){ return x > 0; }); return t.length ? Math.min.apply(null, t) : 12; }
+function commonTill(Y){ var t = ['O','D','C'].map(function(k){ return autoTill(k, Y); }).filter(function(x){ return x > 0; }); return t.length ? Math.max.apply(null, t) : 12; }
 /* months of the selected period for measure k; growth=true uses the like-for-like start in Auto */
 function period(k, growthView){
   var Y = F.year, a = 1, b = 12, mtd = F.span === 'mtd';
@@ -809,7 +813,8 @@ function growthView(k, M){
   // texts
   var pcy = span(pr.pl, Y), meta = X.meta[k], la = pd(meta.lastAmt), lany = pd(meta.lastAny);
   var ft = filterText();
-  var ban = [];
+  var ban = [], run = running(k, Y, pr.b);
+  if (run && natPY > 0 && pr.L[pr.b]) ban.push('ℹ  ' + MONL[pr.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(run) + ') but ' + MONL[pr.b - 1] + ' ' + (Y - 1) + ' is a full month, so growth looks lower than it is.');
   var first = pd(meta.first);
   if (natPY <= 0) ban.push('⚠  No ' + (Y - 1) + ' ' + lab[2] + ' found for ' + span(pr.pl, Y - 1) + ' – growth shows n/a' + (M.any ? ' for this filter.' : ' until ' + (Y - 1) + ' ' + lab[2] + ' are added and refreshed.'));
   else if (F.month === 'auto' && F.span !== 'mtd' && pr.a > 1) ban.push('ℹ  Like-for-like from ' + MONL[pr.a - 1] + ': ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
@@ -860,6 +865,8 @@ function extViews(M){
   if (gC != null) hl.push({k:gC >= 0 ? 'up' : 'down', t:'Collection ' + nf1.format(cc) + ' Cr, ' + spct(gC) + ' vs ' + span(pC.ll, Y - 1) + '.'});
   if (oc > 0 && !M.sOn) hl.push({k:cc / oc >= .95 ? 'up' : 'warn', t:'Collection covers ' + nf0.format(cc / oc * 100) + '% of order value in the period.'});
   if (oc > 0) hl.push({k:dc / oc >= .9 ? 'info' : 'warn', t:'Delivery is ' + nf0.format(dc / oc * 100) + '% of order value (' + nf1.format(dc) + ' Cr delivered).'});
+  var runO = running('O', Y, pO.b) || running('C', Y, pC.b) || running('D', Y, pD.b);
+  if (runO && (gO != null || gC != null)) hl.push({k:'info', t:MONL[pO.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(runO) + ') while ' + (Y - 1) + ' has the full month, so growth looks lower than it is.'});
   if (gD == null) hl.push({k:'info', t:'Delivery growth shows n/a until ' + (Y - 1) + ' delivery rows are added to the workbook.'});
   if (M.sOn) hl.push({k:'info', t:'Product category does not apply to collection (booked per customer); collection shows all products.'});
   var overview = {title:'Executive Overview  ·  ' + P, sub:'ADHESIVE & GLUE DIVISION  ·  ORDER · DELIVERY · COLLECTION · VOLUME' + fsub,
@@ -869,7 +876,7 @@ function extViews(M){
     mon:{order:mon(O, pO), delivery:mon(D, pO), collection:mon(C, pO), orderPY:pmon(O, 'O'), collectionPY:pmon(C, 'C')},
     ton:{order:mon(OT, pO), delivery:mon(DT, pO)}, dton:Math.round(DT.cy[0] * 10) / 10, hl:hl,
     foot:'Order = Total Amount (SALES_ORDER), Delivery = Delivery Amount (DELIVERY_ORDER), Collection = Collection Amount (PRIMARY_SALES_COLLECTION). Volume = quantity × TON_COV_FACTOR from SKU_MASTER (free products excluded). ' +
-      (F.month === 'auto' ? 'Period ' + P + (F.span === 'mtd' ? ' = the last month' : ' runs to the last month') + ' all three sources have complete. ' : '') + 'Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
+      (F.month === 'auto' ? 'Period ' + P + (F.span === 'mtd' ? ' = the latest month' : ' runs to the latest month') + ' in the data. ' : '') + 'Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
 
   // business units (customer BU)
   var nb = X.bu.length, byBu = function(i, c){ return X.cBu[c]; };
@@ -1148,7 +1155,7 @@ function monthOptions(){
   var last = 0; ['O','D','C'].forEach(function(k){ var d = pd(IX.meta[k].lastAny); if (d) last = Math.max(last, d.getFullYear() > F.year ? 12 : (d.getFullYear() < F.year ? 0 : d.getMonth() + 1)); });
   last = last || 12;
   if (F.month !== 'auto' && +F.month > last) F.month = 'auto';
-  var h = opt('auto', 'Auto (latest full month)', F.month);
+  var h = opt('auto', 'Auto (latest month)', F.month);
   for (var m = 1; m <= last; m++) h += opt(String(m), MONL[m - 1], F.month);
   return h;
 }
