@@ -114,7 +114,9 @@ The script checks the source Sheets every 5 minutes. When something changed and 
 * The **Budget vs actual** page compares the sales budget with order, delivery and collection: achievement %, gap, monthly chart, segment and category tables, and the SKU groups furthest behind or ahead.
 * The budget comes from the budget Sheets listed in **Sources**. Add a new year by importing its file into a new Google Sheet and adding the link.
 * The same budget value is used for all three comparisons. Volume uses BUDGET_QTY × TON factor.
-* When the last month is still running, its budget is counted for the days passed (15 of 30 days = half the month's budget).
+* The budget is always the **full target** of the period (full month for MTD, January to that month for YTD).
+* **Remaining** = budget − actual. **Daily RR (required rate)** = remaining ÷ working days left to the end of the period.
+* Working days come from the **Holidays** tab of the Admin Sheet: column A/B = holiday dates (government and bank holidays), column D = weekly days off (Friday, Saturday). Add next year's holidays when the list is announced. Run **Dashboard → Set up (first time)** once to create the tab; it does not touch the other tabs.
 * The budget is per product. Year, Month, Period and Product Category filters apply; Business Unit, Region, Territory and Distributor do not.
 
 ## Users and passwords
