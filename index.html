@@ -1910,7 +1910,8 @@ var DMODES = {
   day: {n:'Day', date:true, key:function(r){ return r.d; }, cols:['Date', 'Day'], cell:function(r){ return [dayText(r.d), dayName(r.d)]; }, sort:'key'},
   dd:  {n:'Day × Distributor', date:true, key:function(r){ return r.d + '|' + r.c; }, cols:['Date', 'Distributor', 'Code', 'BU', 'Region'], cell:function(r, C){ return [dayText(r.d), C[1], C[0], C[2], regName(C[3])]; }, sort:'key'},
   dp2: {n:'Day × Product', date:true, key:function(r){ return r.d + '|' + r.s; }, cols:['Date', 'Product', 'Code', 'Category'], cell:function(r, C, S){ return [dayText(r.d), S[1], S[0], S[4]]; }, sort:'key'},
-  dall:{n:'All detail (day × distributor × product)', date:true, key:function(r){ return r.d + '|' + r.c + '|' + r.s; }, cols:['Date', 'Distributor', 'Code', 'BU', 'Product', 'Category'], cell:function(r, C, S){ return [dayText(r.d), C[1], C[0], C[2], S[1], S[4]]; }, sort:'key'},
+  alld:{n:'All detail (month × day × distributor × product)', date:true, keyCols:2, key:function(r){ return r.d + '|' + r.c + '|' + r.s; }, cols:['Month', 'Date', 'Distributor', 'Code', 'Product', 'Category'],
+        cell:function(r, C, S){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), dayText(r.d), C[1], C[0], S[1], S[4]]; }, sort:'key'},
   line:{n:'Open order line', key:function(r, i){ return i; }, cols:['Distributor', 'Code', 'BU', 'Product', 'Order ref', 'Age (days)'], cell:function(r, C, S){ return [C[1], C[0], C[2], S[1], '#' + (r.ord + 1), r.age]; }, numcol:5}
 };
 var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -1921,7 +1922,7 @@ function drillModes(k){
   if (k === 'P') return ['line', 'd', 'p'];
   var day = IX.daily && !!IX.R[k].d;                         // day-wise views need data built by the newer Code.gs
   if (k === 'C') return ['d'].concat(day ? ['day', 'dd'] : [], ['md', 'm']);
-  return ['dp', 'd', 'p'].concat(day ? ['day', 'dd', 'dp2', 'dall'] : [], ['m', 'all']);
+  return ['dp', 'd', 'p'].concat(day ? ['day', 'dd', 'dp2', 'm', 'alld'] : ['m', 'all']);      // with day-wise data the last option carries the day as well
 }
 function drillBuild(){
   var R = IX.R, md = DMODES[DS.mode], g = {}, list = [], hasT = DS.spec.k !== 'C';
@@ -1931,11 +1932,11 @@ function drillBuild(){
     e.a += r.a; e.t += r.t;
   });
   list.forEach(function(e){ e.text = e.cells.join(' ').toLowerCase(); });
-  DS.cols = md.cols.concat(hasT ? ['Amount (৳)', 'TON'] : ['Amount (৳)']); DS.nText = md.cols.length; DS.numcol = md.numcol; DS.hasT = hasT; DS.date = !!md.date;
+  DS.cols = md.cols.concat(hasT ? ['Amount (৳)', 'TON'] : ['Amount (৳)']); DS.nText = md.cols.length; DS.numcol = md.numcol; DS.hasT = hasT; DS.date = !!md.date; DS.keyCols = md.date ? (md.keyCols || 1) : 0;
   DS.list = list; DS.sort = md.sort === 'key' ? {c:md.date ? 0 : -1, d:1} : {c:DS.spec.ton ? md.cols.length + 1 : md.cols.length, d:-1};
   drillShow(true);
 }
-function drillVal(e, c){ return c === -1 || (c === 0 && DS.date) ? e.k : (c < DS.nText ? e.cells[c] : (c === DS.nText ? e.a : e.t)); }
+function drillVal(e, c){ return c === -1 || c < DS.keyCols ? e.k : (c < DS.nText ? e.cells[c] : (c === DS.nText ? e.a : e.t)); }
 function drillShow(reset){
   var tk = dr.q.value.toLowerCase().split(/\s+/).filter(Boolean);
   var f = tk.length ? DS.list.filter(function(e){ return tk.every(function(k){ return e.text.indexOf(k) > -1; }); }) : DS.list.slice();
