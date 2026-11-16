@@ -150,6 +150,11 @@ kbd{font:600 10px var(--f-body);color:var(--mut);border:1px solid var(--line);bo
 .ringw .tr{stroke:var(--track)}
 .rc{position:absolute;inset:0;display:grid;place-items:center;font:600 12.5px var(--f-display);font-variant-numeric:tabular-nums}
 .rc.up{color:var(--ink)} .rc.down{color:var(--bad)} .rc.na{color:var(--na);font-size:11px}
+.spw{position:relative;cursor:crosshair;touch-action:pan-y;padding-top:6px}
+.spw .spd{position:absolute;z-index:2;width:11px;height:11px;margin:-0px 0 0 -5.5px;border-radius:50%;background:#fff;border:3px solid var(--accent2);box-shadow:0 0 10px var(--accent-glow);opacity:0;pointer-events:none;transform:translateY(calc(6px - 5.5px))}
+.spw .spd.on{opacity:1}
+.spw .spt{position:absolute;z-index:3;bottom:calc(100% + 2px);left:0;padding:7px 11px;border-radius:11px;background:rgba(20,15,22,.95);border:1px solid rgba(255,255,255,.16);color:#F7F2EE;font-size:12px;white-space:nowrap;opacity:0;pointer-events:none;box-shadow:0 10px 24px rgba(0,0,0,.4)}
+.spw .spt.on{opacity:1} .spw .spt b{font-weight:700;margin-right:6px} .spw .spt small{display:block;color:#BDB2AD;font-size:11px;margin-top:1px}
 .spark{display:block;width:100%;height:46px;overflow:visible}
 .spark path.l{fill:none;stroke:var(--accent2);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 5px var(--accent-glow))}
 .spark path.a{fill:url(#sg);stroke:none} .spark path.l{vector-effect:non-scaling-stroke}
@@ -682,9 +687,9 @@ function prep(R){
   X.daily = false;
   ['O','D','C'].forEach(function(k){
     var T = R[k]; if (!T || !T.d || T.ym) return;
-    var memo = {}, ym = new Array(T.d.length);
-    for (var i = 0; i < T.d.length; i++) { var d = T.d[i], v = memo[d]; if (v === undefined) { var dt = new Date((d + 10957) * 864e5); v = memo[d] = (dt.getUTCFullYear() - 2000) * 12 + dt.getUTCMonth(); } ym[i] = v; }
-    T.ym = ym; X.daily = true;
+    var memo = {}, ym = new Array(T.d.length), dom = new Uint8Array(T.d.length);
+    for (var i = 0; i < T.d.length; i++) { var d = T.d[i], v = memo[d]; if (v === undefined) { var dt = new Date((d + 10957) * 864e5); v = memo[d] = [(dt.getUTCFullYear() - 2000) * 12 + dt.getUTCMonth(), dt.getUTCDate()]; } ym[i] = v[0]; dom[i] = v[1]; }
+    T.ym = ym; T.dom = dom; X.daily = true;
   });
   function dict(){ var m = {}, a = []; return {id:function(s){ if (!(s in m)) { m[s] = a.length; a.push(s); } return m[s]; }, list:a}; }
   var segD = dict(), grpD = dict(), catD = dict(), buD = dict(), regD = dict(), terD = dict(), chD = dict();
@@ -761,13 +766,18 @@ function period(k, growthView){
   var P = [], L = [];
   for (var m = 1; m <= 12; m++) { P[m] = m >= a && m <= b && b > 0; L[m] = P[m] && pyCovered(k, Y, m); }
   var pl = [], ll = []; for (m = 1; m <= 12; m++) { if (P[m]) pl.push(m); if (L[m]) ll.push(m); }
-  return {P:P, L:L, a:a, b:b, pl:pl, ll:ll, Y:Y, same:pl.length === ll.length};
+  // same-date comparison: when the last month of the period is still running (data to the 15th, say),
+  // last year is counted only up to the same day of that month. Needs day-wise data.
+  var cut = null, T = IX.R[k], la = pd(IX.meta[k].lastAmt || IX.meta[k].lastAny);
+  if (T && T.dom && la && b > 0 && la.getFullYear() === Y && la.getMonth() + 1 === b && la.getDate() < new Date(Y, b, 0).getDate() && L[b]) cut = {m:b, day:la.getDate(), la:la};
+  return {P:P, L:L, a:a, b:b, pl:pl, ll:ll, Y:Y, same:pl.length === ll.length, cut:cut};
 }
+function ordinal(n){ var v = n % 100, s = ['th', 'st', 'nd', 'rd']; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
 function span(list, y){ if (!list.length) return ''; var a = MONS[list[0] - 1], b = MONS[list[list.length - 1] - 1]; return (a === b ? a : a + ' – ' + b) + (y ? ' ' + y : ''); }
 
 /* ---------- roll-up: one pass over a fact table ---------- */
 function roll(k, pr, keyOf, n, val, M){
-  var T = IX.R[k], ym = T.ym, cc = T.c, ss = T.s, vv = T[val || 'a'], len = ym.length, Y = pr.Y;
+  var T = IX.R[k], ym = T.ym, cc = T.c, ss = T.s, vv = T[val || 'a'], len = ym.length, Y = pr.Y, cut = pr.cut, dom = T.dom, cm = cut ? cut.m : 0, cd = cut ? cut.day : 0;
   var cy = new Float64Array(n), lc = new Float64Array(n), py = new Float64Array(n), mon = new Float64Array(13), pmon = new Float64Array(13);
   var div = val === 't' ? 1000 : CRD / IX.U, useS = !!ss && M.sOn;
   for (var i = 0; i < len; i++) {
@@ -775,7 +785,7 @@ function roll(k, pr, keyOf, n, val, M){
     if (useS && !M.s[ss[i]]) continue;
     var y = 2000 + ((ym[i] / 12) | 0), m = ym[i] % 12 + 1, v = vv[i] / div;
     if (y === Y) { mon[m] += v; if (pr.P[m]) { var key = keyOf(i, c, ss ? ss[i] : -1); if (key > -1) { cy[key] += v; if (pr.L[m]) lc[key] += v; } } }
-    else if (y === Y - 1) { pmon[m] += v; if (pr.L[m]) { var k2 = keyOf(i, c, ss ? ss[i] : -1); if (k2 > -1) py[k2] += v; } }
+    else if (y === Y - 1) { pmon[m] += v; if (pr.L[m] && !(m === cm && dom[i] > cd)) { var k2 = keyOf(i, c, ss ? ss[i] : -1); if (k2 > -1) py[k2] += v; } }
   }
   return {cy:cy, lc:lc, py:py, mon:mon, pmon:pmon};
 }
@@ -810,7 +820,7 @@ function growthView(k, M){
   function grpSum(fn){ var o = {cy:0, lc:0, py:0}; ids.forEach(function(g){ if (fn(g)) { o.cy += G.cy[g]; o.lc += G.lc[g]; o.py += G.py[g]; } }); return o; }
   var at = grpSum(function(){ return 1; }), tp = grpSum(function(g){ return top[g]; }), rest = grpSum(function(g){ return !top[g]; });
   var tpx = grpSum(function(g){ return top[g] && !(!isC && X.grpRub[g]); });
-  var pyl = span(pr.ll.length ? pr.ll : pr.pl, Y - 1);
+  var pyl = span(pr.ll.length ? pr.ll : pr.pl, Y - 1) + (pr.cut ? ' (to ' + pr.cut.day + ' ' + MONS[pr.cut.m - 1] + ')' : '');
   function tile(t, o){
     var hasPY = o.py > 0;
     return {t:t, cy:r4(o.cy), py:r4(o.py), lcy:pr.same ? null : r4(o.lc), g:hasPY ? r4(o.lc / o.py - 1) : null, d:hasPY ? r4(o.lc - o.py) : null,
@@ -854,7 +864,8 @@ function growthView(k, M){
   var pcy = span(pr.pl, Y), meta = X.meta[k], la = pd(meta.lastAmt), lany = pd(meta.lastAny);
   var ft = filterText();
   var ban = [], run = running(k, Y, pr.b);
-  if (run && natPY > 0 && pr.L[pr.b]) ban.push('ℹ  ' + MONL[pr.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(run) + ') but ' + MONL[pr.b - 1] + ' ' + (Y - 1) + ' is a full month, so growth looks lower than it is.');
+  if (pr.cut && natPY > 0) ban.push('ℹ  Same-date comparison: ' + MONL[pr.b - 1] + ' is counted up to the ' + ordinal(pr.cut.day) + ' in both years (data up to ' + fdate(pr.cut.la) + ', compared with 1–' + pr.cut.day + ' ' + MONS[pr.b - 1] + ' ' + (Y - 1) + ').');
+  else if (run && natPY > 0 && pr.L[pr.b]) ban.push('ℹ  ' + MONL[pr.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(run) + ') but ' + MONL[pr.b - 1] + ' ' + (Y - 1) + ' is a full month, so growth looks lower than it is.');
   var first = pd(meta.first);
   if (natPY <= 0) ban.push('⚠  No ' + (Y - 1) + ' ' + lab[2] + ' found for ' + span(pr.pl, Y - 1) + ' – growth shows n/a' + (M.any ? ' for this filter.' : ' until ' + (Y - 1) + ' ' + lab[2] + ' are added and refreshed.'));
   else if (F.month === 'auto' && F.span !== 'mtd' && pr.a > 1) ban.push('ℹ  Like-for-like from ' + MONL[pr.a - 1] + ': ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
@@ -908,7 +919,9 @@ function extViews(M){
   if (oc > 0 && !M.sOn) hl.push({k:cc / oc >= .95 ? 'up' : 'warn', t:'Collection covers ' + nf0.format(cc / oc * 100) + '% of order value in the period.'});
   if (oc > 0) hl.push({k:dc / oc >= .9 ? 'info' : 'warn', t:'Delivery is ' + nf0.format(dc / oc * 100) + '% of order value (' + nf1.format(dc) + ' Cr delivered).'});
   var runO = running('O', Y, pO.b) || running('C', Y, pC.b) || running('D', Y, pD.b);
-  if (runO && (gO != null || gC != null)) hl.push({k:'info', t:MONL[pO.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(runO) + ') while ' + (Y - 1) + ' has the full month, so growth looks lower than it is.'});
+  var cutO = pO.cut || pC.cut || pD.cut;
+  if (cutO && (gO != null || gC != null)) hl.push({k:'info', t:'Same-date comparison: ' + MONL[cutO.m - 1] + ' is counted up to the ' + ordinal(cutO.day) + ' in both years (data up to ' + fdate(cutO.la) + ').'});
+  else if (runO && (gO != null || gC != null)) hl.push({k:'info', t:MONL[pO.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(runO) + ') while ' + (Y - 1) + ' has the full month, so growth looks lower than it is.'});
   if (gD == null) hl.push({k:'info', t:'Delivery growth shows n/a until ' + (Y - 1) + ' delivery rows are added to the workbook.'});
   if (M.sOn) hl.push({k:'info', t:'Product category does not apply to collection (booked per customer); collection shows all products.'});
   var overview = {title:'Executive Overview  ·  ' + P, sub:'ADHESIVE & GLUE DIVISION  ·  ORDER · DELIVERY · COLLECTION · VOLUME' + fsub,
@@ -1145,7 +1158,29 @@ function sparkHTML(D){
   var X = function(i){ return 3 + (W - 6) * i / 11; }, Y = function(v){ return 4 + (H - 10) * (1 - (v - mn) / ((mx - mn) || 1)); };
   var d = pts.map(function(p, k){ return (k ? 'L' : 'M') + X(p[0]).toFixed(1) + ' ' + Y(p[1]).toFixed(1); }).join(' ');
   var a = d + ' L' + X(pts[pts.length - 1][0]).toFixed(1) + ' ' + H + ' L' + X(pts[0][0]).toFixed(1) + ' ' + H + ' Z';
-  return '<svg class="spark" viewBox="0 0 200 46" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF7A4D" stop-opacity=".45"/><stop offset="1" stop-color="#FF7A4D" stop-opacity="0"/></linearGradient></defs><path class="a" d="' + a + '"/><path class="l" data-line d="' + d + '"/></svg>';
+  var data = pts.map(function(p){ return [p[0], +p[1].toFixed(2), D.mon.py && D.mon.py[p[0]] != null ? +D.mon.py[p[0]].toFixed(2) : null, +(X(p[0]) / W * 100).toFixed(2), +(Y(p[1]) / H * 100).toFixed(2)]; });
+  return '<div class="spw" data-y="' + D.year + '" data-p=\'' + JSON.stringify(data) + '\' title="Monthly trend - point or tap to see each month"><i class="spd"></i><div class="spt"></div><svg class="spark" viewBox="0 0 200 46" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF7A4D" stop-opacity=".45"/><stop offset="1" stop-color="#FF7A4D" stop-opacity="0"/></linearGradient></defs><path class="a" d="' + a + '"/><path class="l" data-line d="' + d + '"/></svg></div>';
+}
+/* monthly trend line on the first tile: point or tap to read a month */
+function wireSpark(){
+  $$('.spw', stage).forEach(function(w){
+    var pts; try { pts = JSON.parse(w.dataset.p); } catch(e){ return; }
+    var dot = $('.spd', w), tip = $('.spt', w), yr = +w.dataset.y;
+    function at(e){
+      var r = w.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width * 100, best = pts[0];
+      pts.forEach(function(p){ if (Math.abs(p[3] - fx) < Math.abs(best[3] - fx)) best = p; });
+      dot.style.left = best[3] + '%'; dot.style.top = best[4] + '%'; dot.classList.add('on');
+      tip.innerHTML = '<b>' + MONS[best[0]] + ' ' + yr + '</b> ' + nf1.format(best[1]) + ' Cr' + (best[2] != null ? '<small>' + (yr - 1) + ': ' + nf1.format(best[2]) + ' Cr</small>' : '');
+      tip.classList.add('on');
+      var tw = tip.offsetWidth, x = best[3] / 100 * r.width - tw / 2;
+      tip.style.left = Math.max(0, Math.min(r.width - tw, x)) + 'px';
+    }
+    function off(){ dot.classList.remove('on'); tip.classList.remove('on'); }
+    w.addEventListener('pointermove', at); w.addEventListener('pointerdown', at);
+    w.addEventListener('pointerleave', function(e){ if (e.pointerType === 'mouse') off(); });
+    w.addEventListener('click', function(e){ e.stopPropagation(); at(e); });      // the tap reads the month; it does not open the data window
+    document.addEventListener('pointerdown', function(e){ if (!w.contains(e.target)) off(); }, {passive:true});
+  });
 }
 function renderView(key){
   var D = DATA.views[key], M = META[key]; CURD = D;
@@ -1665,7 +1700,7 @@ function render(key){
   if (!DATA) { EXTCH = []; stage.innerHTML = emptyHTML(); wireView(); updateChrome(key); return; }
   if (VIEWS.indexOf(key) > -1) { EXTCH = []; stage.innerHTML = renderView(key); drawMonthly(key); }
   else { stage.innerHTML = renderExt(key); drawExt(); }
-  wireView(); wireFilters(); wireDrill(key); updateChrome(key);
+  wireView(); wireFilters(); wireDrill(key); wireSpark(); updateChrome(key);
 }
 function openUpd(){
   dlg.innerHTML = renderDlg(); ovU.classList.add('on'); wireUpdate();
