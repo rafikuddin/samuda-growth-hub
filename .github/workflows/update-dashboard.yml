@@ -1,6 +1,6 @@
-# Samuda Growth Hub - rebuild data.json from the Excel files in the repository (dump + product master + customer master)
-# and publish the dashboard to GitHub Pages after every upload or change.
-name: Update dashboard
+# Samuda Growth Hub - publish the dashboard page to GitHub Pages after every change.
+# The data itself is not here: it is served by the Google Apps Script after sign-in (see README).
+name: Publish dashboard
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  update:
+  publish:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -25,38 +25,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Look for Excel files
-        id: wb
-        run: |
-          shopt -s nullglob
-          files=(*.xlsx *.xlsm)
-          echo "count=${#files[@]}" >> "$GITHUB_OUTPUT"
-          if [ "${#files[@]}" -gt 0 ]; then echo "Excel files found:"; printf '  %s\n' "${files[@]}"; else echo "No Excel file in the repository - publishing the uploaded data.json as it is."; fi
-
-      - name: Set up Python
-        if: steps.wb.outputs.count != '0'
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Build data.json from the Excel files
-        if: steps.wb.outputs.count != '0'
-        run: |
-          pip install --quiet pandas openpyxl
-          python build_data.py
-
-      - name: Save the new data.json in the repository
-        if: steps.wb.outputs.count != '0'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data.json
-          git diff --cached --quiet || (git commit -m "Update data.json from Excel files" && git push)
-
       - name: Collect the files to publish
         run: |
           mkdir _site
-          cp index.html data.json _site/
+          cp index.html _site/
+          if [ -f config.json ]; then cp config.json _site/; fi
+          if [ -f data.json ]; then cp data.json _site/; fi
           touch _site/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
