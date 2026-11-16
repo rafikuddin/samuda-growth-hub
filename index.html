@@ -296,6 +296,29 @@ body.locked .app{visibility:hidden}
 .cbp li[aria-selected="true"]{background:rgba(255,107,61,.28);color:#fff}
 .cbp li.more{color:var(--faint);font-style:italic;cursor:default;background:none}
 @media (max-width:480px){.cb{position:static}.cbp{left:12px;right:12px;width:auto;top:calc(100% + 6px)}}
+.dlg.drill{width:min(1180px,100%);height:calc(100dvh - 40px);overflow:hidden;gap:12px}
+.drbar{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px}
+.drbar .fl{flex:0 1 230px} .drbar .fl.wide{flex:1 1 220px}
+.drbar input{width:100%;height:36px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--ink);font:500 12.5px var(--f-body)}
+.drbar input:focus{outline:0;border-color:rgba(255,120,80,.8);box-shadow:0 0 0 3px rgba(255,107,61,.22)}
+.drbar .btn{height:36px;padding:0 16px;font-size:12px}
+.drsum{font-size:12.5px;color:var(--mut);padding-bottom:9px;white-space:nowrap} .drsum b{color:var(--ink);font-weight:700}
+.drw{flex:1;min-height:0;overflow:auto;border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.16)}
+.drw table{width:100%;border-collapse:collapse;font-size:12.5px;font-variant-numeric:tabular-nums}
+.drw th{position:sticky;top:0;z-index:1;background:#2A222B;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);text-align:left;padding:10px 12px;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--rim)}
+.drw th:hover{color:var(--ink)} .drw th.num,.drw td.num{text-align:right}
+.drw th i{font-style:normal;color:var(--accent2);margin-left:4px}
+.drw td{padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;max-width:340px;overflow:hidden;text-overflow:ellipsis}
+.drw tbody tr:hover{background:rgba(255,255,255,.05)}
+.drw tfoot td{position:sticky;bottom:0;background:#2A222B;font-weight:700;border-top:1px solid var(--rim);border-bottom:0}
+.drw .empty{padding:40px 16px;text-align:center;color:var(--faint)}
+.drf{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;color:var(--faint)}
+.drf .btn{height:34px;padding:0 14px;font-size:12px}
+.tile.dr{cursor:pointer} .tile.dr:hover{border-color:color-mix(in srgb,var(--c) 60%,transparent)} .tile.dr:focus-visible{outline:2px solid var(--c);outline-offset:3px}
+.drhint{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:11.5px;font-weight:600;color:var(--c);letter-spacing:.02em}
+.drhint svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+table.t tr.dr{cursor:pointer} table.t tr.dr:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
+@media (max-width:640px){.dlg.drill{padding:18px 14px 14px}.drsum{white-space:normal;padding-bottom:0;flex:1 1 100%}.drbar .fl{flex:1 1 100%}}
 .tile.go{cursor:pointer}
 .tile.go:hover{border-color:color-mix(in srgb,var(--c) 60%,transparent)}
 .tile.go:focus-visible{outline:2px solid var(--c);outline-offset:3px}
@@ -498,6 +521,15 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 
 <div class="ov" id="ovUpd" role="dialog" aria-modal="true" aria-labelledby="updT"><div class="dlg glass" id="dlg"></div></div>
 <div class="ov" id="ovPal" role="dialog" aria-modal="true" aria-label="Jump to"><div class="pal glass"><input id="palq" type="text" placeholder="Jump to a view…" autocomplete="off" spellcheck="false"><ul id="pall"></ul></div></div>
+<div class="ov" id="ovDr" role="dialog" aria-modal="true" aria-labelledby="drT"><div class="dlg glass drill">
+  <button class="ib x" id="drx" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <h2 id="drT">Data</h2><p class="sub" id="drS"></p>
+  <div class="drbar"><label class="fl"><span>Show by</span><select id="drM"></select></label>
+    <label class="fl wide"><span>Search</span><input id="drQ" type="search" placeholder="Distributor, product, code…" autocomplete="off" spellcheck="false"></label>
+    <div class="drsum" id="drSum"></div><button class="btn alt" id="drCsv" type="button">Download CSV</button></div>
+  <div class="drw" id="drW" tabindex="0"></div>
+  <div class="drf"><span id="drN"></span><button class="btn alt" id="drMore" type="button">Show more rows</button></div>
+</div></div>
 <div class="ov" id="ovPw" role="dialog" aria-modal="true" aria-labelledby="pwT"><div class="dlg glass pwd">
   <button class="ib x" id="pwx" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   <h2 id="pwT">Change password</h2><p class="sub" id="pwsub">Choose a new password for your account</p>
@@ -835,7 +867,9 @@ function growthView(k, M){
     cmp:'Compared with ' + pyl + '  ·  Value in Crore (1 Cr = 10,000,000 BDT)',
     info:lab[6] + fdate(la || lany) + (k === 'O' && lany > la ? '   ·   rows up to ' + fdate(lany) + ' have no amount' : ''),
     banner:ban.join('  '), year:Y, pyear:Y - 1, pcy:pcy, ppy:pyl, segh:isC ? 'BUSINESS UNIT' : 'SEGMENT', chart:lab[4], foot:lab[5],
-    items:scope, view:lab[0], tiles:tiles, segs:segs, mov:mov, mon:mon, ins:ins};
+    items:scope, view:lab[0], tiles:tiles, segs:segs, mov:mov, mon:mon, ins:ins,
+    sel:isC ? [null, function(c){ return X.cIn[c] && inScope(c); }, function(c){ return X.cIn[c] && !!top[c]; }, function(c){ return X.cIn[c] && inScope(c) && !top[c]; }, function(c){ return X.cIn[c] && R.cust[c][2] === 'DOP'; }]
+              : [null, function(c, s){ var g = X.sGrp[s]; return g > -1 && inScope(g); }, function(c, s){ return !!top[X.sGrp[s]]; }, function(c, s){ var g = X.sGrp[s]; return !!top[g] && !X.grpRub[g]; }, function(c, s){ var g = X.sGrp[s]; return g > -1 && inScope(g) && !top[g]; }]};
 }
 
 /* ---------- Overview, Business units, Regions, Products, Pending ---------- */
@@ -1260,7 +1294,7 @@ function tableHTML(cols, rows, tot){
       default: return '<td>' + num(v, c.f) + '</td>';
     }
   }
-  h += rows.map(function(r, i){ return '<tr>' + cols.map(function(c){ return cell(c, r, i, false); }).join('') + '</tr>'; }).join('');
+  h += rows.map(function(r, i){ return '<tr' + (r._d ? ' class="dr" tabindex="0" title="Show the data behind this row" data-dr="' + (DRL.push(r._d) - 1) + '"' : '') + '>' + cols.map(function(c){ return cell(c, r, i, false); }).join('') + '</tr>'; }).join('');
   if (tot) h += '<tr class="tot">' + cols.map(function(c){ return cell(c, tot, 0, true); }).join('') + '</tr>';
   return h + '</tbody></table></div>';
 }
@@ -1289,8 +1323,38 @@ function legendHTML(series){
   return '<div class="lg2">' + series.map(function(s){ return '<span style="--c:' + s.c + '"><i class="' + (s.line ? 'ln' : '') + '" style="background:' + s.c + '"></i>' + esc(s.n) + '</span>'; }).join('') + '</div>';
 }
 var EXTCH = [];   // charts of the current added view, redrawn on resize
+function drillSpecs(key){
+  // which data sits behind each tile of the current view (same order as the tiles on the page)
+  if (!DATA || !IX) return;
+  var R = IX.R, inM = function(c){ return !!R.cust[c][6]; };
+  if (VIEWS.indexOf(key) > -1) {
+    var k = {order:'O', delivery:'D', collection:'C'}[key], V = DATA.views[key];
+    DRT = V.tiles.map(function(t, i){ return {k:k, growth:true, title:META[key].label + ' · ' + t.t, pred:V.sel[i]}; });
+  } else if (key === 'overview') {
+    DRT = [null, null, null, {k:'O', title:'Order volume (TON)', ton:true}];       // the first three tiles open their own page
+  } else if (key === 'units') {
+    DRT = DATA.ext.bu.rows.slice(0, 4).map(function(x){ return {k:'O', title:'Order · ' + x.n + ' BU', pred:function(c){ return inM(c) && R.cust[c][2] === x.n; }}; });
+  } else if (key === 'pending') {
+    DRT = [0, 1, 2, 3].map(function(){ return {k:'P', title:'Pending delivery · open order lines'}; });
+  }
+}
+function rowDrills(key, E){
+  var R = IX.R, inM = function(c){ return !!R.cust[c][6]; };
+  if (key === 'units') E.rows.forEach(function(x){ x._d = {k:'O', title:'Order · ' + x.n + ' BU', pred:function(c){ return inM(c) && R.cust[c][2] === x.n; }}; });
+  if (key === 'regions') E.rows.forEach(function(x){ x._d = {k:'O', title:'Order · ' + x.n, pred:function(c){ return inM(c) && regName(R.cust[c][3]) === x.n; }}; });
+  if (key === 'products') {
+    E.top.forEach(function(x){ x._d = {k:'O', title:'Order · ' + x.n, pred:function(c, s){ return R.sku[s][1] === x.n; }}; });
+    E.cats.forEach(function(x){ x._d = {k:'O', title:'Order · ' + x.n, pred:function(c, s){ return !!R.sku[s][2] && R.sku[s][4] === x.n; }}; });
+  }
+  if (key === 'pending') {
+    E.bu.forEach(function(x){ x._d = {k:'P', title:'Pending delivery · ' + x.n, pred:function(c){ return (R.cust[c][6] ? R.cust[c][2] : 'Not in master') === x.n; }}; });
+    E.dist.forEach(function(x){ x._d = {k:'P', title:'Pending delivery · ' + x.n, pred:function(c){ return R.cust[c][1] === x.n; }}; });
+    E.sku.forEach(function(x){ x._d = {k:'P', title:'Pending delivery · ' + x.n, pred:function(c, s){ return R.sku[s][1] === x.n; }}; });
+  }
+}
 function renderExt(key){
   var E = DATA.ext && DATA.ext[EXT[key]];
+  if (E && IX) rowDrills(key, E);
   EXTCH = [];
   if (!E) return headHTML({title:META[key].label, sub:'NO DATA', cmp:''}) + '<div class="banner warn" data-rise>⚠  This view needs data.json version 4 (made by build_data.py). Open Update data for the steps.</div>' + footHTML();
   var h = headHTML(E);
@@ -1586,10 +1650,11 @@ function emptyHTML(){
     '<div class="banner warn" data-rise>⚠  Could not read data.json. Upload data.json to the same GitHub repository as index.html and open the page from its GitHub Pages link. Press Update data for the steps.</div>');
 }
 function render(key){
+  DRL = []; DRT = [];
   if (!DATA) { EXTCH = []; stage.innerHTML = emptyHTML(); wireView(); updateChrome(key); return; }
   if (VIEWS.indexOf(key) > -1) { EXTCH = []; stage.innerHTML = renderView(key); drawMonthly(key); }
   else { stage.innerHTML = renderExt(key); drawExt(); }
-  wireView(); wireFilters(); updateChrome(key);
+  wireView(); wireFilters(); wireDrill(key); updateChrome(key);
 }
 function openUpd(){
   dlg.innerHTML = renderDlg(); ovU.classList.add('on'); wireUpdate();
@@ -1707,7 +1772,7 @@ function showLogin(message, checking){
 function hideLogin(){ lg.ov.hidden = true; document.body.classList.remove('locked'); lg.card.classList.remove('busy'); }
 function lockOut(message){
   clearTok(); DATA = null; RAW = null; IX = null; USER = ''; SRC = {kind:'none', at:''}; GHSTATE = 'loading';
-  closeUpd(true); closePal(); closeNav(); closePw();
+  closeUpd(true); closePal(); closeNav(); closePw(); closeDrill();
   if (current && ALL.indexOf(current) > -1) render(current);
   showLogin(message);
 }
@@ -1768,10 +1833,117 @@ pw.form.addEventListener('submit', function(e){
     if (j && j.error === 'old') { pw.o.value = ''; pw.o.focus(); }
   }, function(){ pw.b.disabled = false; pw.b.textContent = 'Save new password'; pwSay('Could not reach the service. Check your internet connection and try again.'); });
 });
+/* ---------- data behind a number (drill-down) ---------- */
+var DRL = [], DRT = [], DS = null;
+var dr = {ov:$('#ovDr'), t:$('#drT'), s:$('#drS'), m:$('#drM'), q:$('#drQ'), w:$('#drW'), sum:$('#drSum'), n:$('#drN'), more:$('#drMore'), csv:$('#drCsv')};
+var nfT = new Intl.NumberFormat('en-US', {maximumFractionDigits:0}), nfN = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+function drillRows(spec){
+  var X = IX, R = X.R, M = masks(), out = [];
+  if (spec.k === 'P') {
+    (R.P || []).forEach(function(l){ if (!M.c[l[0]] || (M.sOn && !M.s[l[1]]) || (spec.pred && !spec.pred(l[0], l[1]))) return; out.push({ym:-1, c:l[0], s:l[1], a:l[4] * X.U, t:l[5] / 1000, age:l[3], ord:l[2]}); });
+    return {rows:out, period:'open orders as of ' + DATA.ext.pending.asof};
+  }
+  var T = R[spec.k], pr = period(spec.k, !!spec.growth), hs = !!T.s;
+  for (var i = 0; i < T.ym.length; i++) {
+    var c = T.c[i]; if (!M.c[c]) continue;
+    var s = hs ? T.s[i] : -1; if (hs && M.sOn && !M.s[s]) continue;
+    var y = 2000 + ((T.ym[i] / 12) | 0), m = T.ym[i] % 12 + 1; if (y !== pr.Y || !pr.P[m]) continue;
+    if (spec.pred && !spec.pred(c, s)) continue;
+    out.push({ym:T.ym[i], c:c, s:s, a:T.a[i] * X.U, t:hs ? T.t[i] / 1000 : 0});
+  }
+  return {rows:out, period:span(pr.pl, pr.Y)};
+}
+/* each way of showing the rows: key to group by + the text columns */
+var DMODES = {
+  dp:  {n:'Distributor × Product', key:function(r){ return r.c + '|' + r.s; }, cols:['Distributor', 'Code', 'BU', 'Region', 'Product', 'Category'], cell:function(r, C, S){ return [C[1], C[0], C[2], regName(C[3]), S[1], S[4]]; }},
+  d:   {n:'Distributor', key:function(r){ return r.c; }, cols:['Distributor', 'Code', 'BU', 'Region', 'Territory'], cell:function(r, C){ return [C[1], C[0], C[2], regName(C[3]), C[4]]; }},
+  p:   {n:'Product', key:function(r){ return r.s; }, cols:['Product', 'Code', 'Segment', 'Category'], cell:function(r, C, S){ return [S[1], S[0], S[2], S[4]]; }},
+  m:   {n:'Month', key:function(r){ return r.ym; }, cols:['Month'], cell:function(r){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0))]; }, sort:'key'},
+  md:  {n:'Month × Distributor', key:function(r){ return r.ym + '|' + r.c; }, cols:['Month', 'Distributor', 'Code', 'BU', 'Region'], cell:function(r, C){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), C[1], C[0], C[2], regName(C[3])]; }},
+  all: {n:'All detail (month × distributor × product)', key:function(r){ return r.ym + '|' + r.c + '|' + r.s; }, cols:['Month', 'Distributor', 'Code', 'Product', 'Category'], cell:function(r, C, S){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), C[1], C[0], S[1], S[4]]; }},
+  line:{n:'Open order line', key:function(r, i){ return i; }, cols:['Distributor', 'Code', 'BU', 'Product', 'Order ref', 'Age (days)'], cell:function(r, C, S){ return [C[1], C[0], C[2], S[1], '#' + (r.ord + 1), r.age]; }, numcol:5}
+};
+function drillModes(k){ return k === 'P' ? ['line', 'd', 'p'] : (k === 'C' ? ['d', 'md', 'm'] : ['dp', 'd', 'p', 'm', 'all']); }
+function drillBuild(){
+  var R = IX.R, md = DMODES[DS.mode], g = {}, list = [], hasT = DS.spec.k !== 'C';
+  DS.rows.forEach(function(r, i){
+    var k = md.key(r, i), e = g[k];
+    if (!e) { e = g[k] = {cells:md.cell(r, R.cust[r.c], r.s > -1 ? R.sku[r.s] : ['', '', '', '', '']), a:0, t:0, k:r.ym}; list.push(e); }
+    e.a += r.a; e.t += r.t;
+  });
+  list.forEach(function(e){ e.text = e.cells.join(' ').toLowerCase(); });
+  DS.cols = md.cols.concat(hasT ? ['Amount (৳)', 'TON'] : ['Amount (৳)']); DS.nText = md.cols.length; DS.numcol = md.numcol; DS.hasT = hasT;
+  DS.list = list; DS.sort = md.sort === 'key' ? {c:-1, d:1} : {c:DS.spec.ton ? md.cols.length + 1 : md.cols.length, d:-1};
+  drillShow(true);
+}
+function drillVal(e, c){ return c === -1 ? e.k : (c < DS.nText ? e.cells[c] : (c === DS.nText ? e.a : e.t)); }
+function drillShow(reset){
+  var tk = dr.q.value.toLowerCase().split(/\s+/).filter(Boolean);
+  var f = tk.length ? DS.list.filter(function(e){ return tk.every(function(k){ return e.text.indexOf(k) > -1; }); }) : DS.list.slice();
+  var c = DS.sort.c, d = DS.sort.d;
+  f.sort(function(x, y){ var a = drillVal(x, c), b = drillVal(y, c); return (typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b))) * d; });
+  DS.view = f; if (reset) DS.shown = 300;
+  var ta = 0, tt = 0; f.forEach(function(e){ ta += e.a; tt += e.t; });
+  var isNum = function(i){ return i >= DS.nText || i === DS.numcol; };
+  var h = '<table><thead><tr>' + DS.cols.map(function(n, i){ return '<th data-c="' + i + '" class="' + (isNum(i) ? 'num' : '') + '">' + esc(n) + (c === i ? '<i>' + (d > 0 ? '▲' : '▼') + '</i>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
+  h += f.slice(0, DS.shown).map(function(e){
+    return '<tr>' + e.cells.map(function(v, i){ return '<td class="' + (isNum(i) ? 'num' : '') + '" title="' + esc(v) + '">' + esc(v) + '</td>'; }).join('') + '<td class="num">' + nfT.format(Math.round(e.a)) + '</td>' + (DS.hasT ? '<td class="num">' + nfN.format(e.t) + '</td>' : '') + '</tr>';
+  }).join('');
+  h += '</tbody><tfoot><tr><td colspan="' + DS.nText + '">Total · ' + nf0.format(f.length) + ' row' + (f.length === 1 ? '' : 's') + '</td><td class="num">' + nfT.format(Math.round(ta)) + '</td>' + (DS.hasT ? '<td class="num">' + nfN.format(tt) + '</td>' : '') + '</tr></tfoot></table>';
+  dr.w.innerHTML = f.length ? h : '<div class="empty">Nothing matches.</div>';
+  if (reset) dr.w.scrollTop = 0;
+  dr.sum.innerHTML = 'Total <b>৳ ' + nfT.format(Math.round(ta)) + '</b> (' + nf2.format(ta / 1e7) + ' Cr)' + (DS.hasT ? ' · <b>' + nf0.format(Math.round(tt)) + '</b> TON' : '');
+  dr.n.textContent = 'Showing ' + nf0.format(Math.min(DS.shown, f.length)) + ' of ' + nf0.format(f.length) + ' rows';
+  dr.more.style.display = f.length > DS.shown ? '' : 'none';
+}
+function openDrill(spec){
+  if (!IX || !spec) return;
+  var got = drillRows(spec), ft = filterText(), modes = drillModes(spec.k);
+  DS = {spec:spec, rows:got.rows, mode:modes[0]};
+  dr.t.textContent = spec.title;
+  dr.s.textContent = got.period + (ft ? '  ·  Filter: ' + ft.replace(/\s{2,}/g, ' ') : '') + '  ·  ' + (spec.k === 'P' ? 'Open order lines (ordered, not yet delivered).' : 'Monthly totals per distributor' + (spec.k === 'C' ? '' : ' and product') + '. Single order lines are not kept in the dashboard.');
+  dr.m.innerHTML = modes.map(function(m){ return opt(m, DMODES[m].n, DS.mode); }).join('');
+  dr.q.value = ''; drillBuild(); dr.ov.classList.add('on');
+}
+function closeDrill(){ dr.ov.classList.remove('on'); }
+function drillCsv(){
+  if (!DS) return;
+  var q = function(v){ v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  var lines = [DS.cols.map(q).join(',')].concat(DS.view.map(function(e){ return e.cells.map(q).concat([Math.round(e.a)], DS.hasT ? [e.t.toFixed(3)] : []).join(','); }));
+  try {
+    var url = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'})), a = document.createElement('a');
+    a.href = url; a.download = (DS.spec.title + ' ' + dr.s.textContent.split('  ·  ')[0]).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') + '.csv';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  } catch(e){}
+}
+$('#drx').addEventListener('click', closeDrill);
+dr.ov.addEventListener('mousedown', function(e){ if (e.target === dr.ov) closeDrill(); });
+dr.m.addEventListener('change', function(){ DS.mode = dr.m.value; drillBuild(); });
+dr.q.addEventListener('input', function(){ drillShow(true); });
+dr.more.addEventListener('click', function(){ DS.shown += 300; drillShow(false); });
+dr.csv.addEventListener('click', drillCsv);
+dr.w.addEventListener('click', function(e){ var th = e.target.closest('th'); if (!th) return; var c = +th.dataset.c; DS.sort = {c:c, d:DS.sort.c === c ? -DS.sort.d : (c >= DS.nText || c === DS.numcol ? -1 : 1)}; drillShow(true); });
+function wireDrill(key){
+  if (!DATA) return;
+  drillSpecs(key);
+  var ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>';
+  $$('.tiles .tile', stage).forEach(function(el, i){
+    var sp = DRT[i]; if (!sp || el.classList.contains('go')) return;
+    el.classList.add('dr'); el.setAttribute('role', 'button'); el.setAttribute('tabindex', '0'); el.setAttribute('aria-label', 'Show the data behind ' + sp.title);
+    el.insertAdjacentHTML('beforeend', '<span class="drhint">' + ICON + 'View data</span>');
+    var go = function(){ openDrill(sp); };
+    el.addEventListener('click', go); el.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+  });
+  $$('tr[data-dr]', stage).forEach(function(tr){
+    var go = function(){ openDrill(DRL[+tr.dataset.dr]); };
+    tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); go(); } });
+  });
+}
+
 /* ---------- pick up newly built data by itself ---------- */
 var VERT = null;
 function quiet(){      // nothing open that a refresh would disturb
-  return lg.ov.hidden && !ovU.classList.contains('on') && !pw.ov.classList.contains('on') && !ovP.classList.contains('on') && !sideEl.classList.contains('open') &&
+  return lg.ov.hidden && !ovU.classList.contains('on') && !pw.ov.classList.contains('on') && !dr.ov.classList.contains('on') && !ovP.classList.contains('on') && !sideEl.classList.contains('open') &&
     !($('#cbp', stage) && !$('#cbp', stage).hidden);
 }
 function checkNew(){
@@ -1864,7 +2036,7 @@ ovP.addEventListener('mousedown', function(e){ if (e.target === ovP) closePal();
 ovU.addEventListener('mousedown', function(e){ if (e.target === ovU) closeUpd(); });
 document.addEventListener('keydown', function(e){
   if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openPal(); }
-  else if (e.key === 'Escape') { closePal(); closeUpd(); closeNav(); closePw(); }
+  else if (e.key === 'Escape') { closePal(); closeUpd(); closeNav(); closePw(); closeDrill(); }
 });
 var LST = 'samuda-growth-hub-theme';
 function applyTheme(t){ if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }
