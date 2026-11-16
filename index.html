@@ -308,7 +308,7 @@ body.locked .app{visibility:hidden}
 .drw th{position:sticky;top:0;z-index:1;background:#2A222B;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);text-align:left;padding:10px 12px;white-space:nowrap;cursor:pointer;user-select:none;border-bottom:1px solid var(--rim)}
 .drw th:hover{color:var(--ink)} .drw th.num,.drw td.num{text-align:right}
 .drw th i{font-style:normal;color:var(--accent2);margin-left:4px}
-.drw td{padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;max-width:340px;overflow:hidden;text-overflow:ellipsis}
+.drw td{padding:8px 12px;border-bottom:1px solid var(--line);white-space:nowrap;max-width:250px;overflow:hidden;text-overflow:ellipsis}
 .drw tbody tr:hover{background:rgba(255,255,255,.05)}
 .drw tfoot td{position:sticky;bottom:0;background:#2A222B;font-weight:700;border-top:1px solid var(--rim);border-bottom:0}
 .drw .empty{padding:40px 16px;text-align:center;color:var(--faint)}
@@ -678,6 +678,14 @@ function regName(r){ return String(r || '').replace(/^COR-DOP\d+$/, 'COR-DOP'); 
 
 function prep(R){
   var U = R.unit || 10, X = {R:R, U:U};
+  // newer data keeps one total per DAY (d = days since 01-Jan-2000); the month index is worked out here
+  X.daily = false;
+  ['O','D','C'].forEach(function(k){
+    var T = R[k]; if (!T || !T.d || T.ym) return;
+    var memo = {}, ym = new Array(T.d.length);
+    for (var i = 0; i < T.d.length; i++) { var d = T.d[i], v = memo[d]; if (v === undefined) { var dt = new Date((d + 10957) * 864e5); v = memo[d] = (dt.getUTCFullYear() - 2000) * 12 + dt.getUTCMonth(); } ym[i] = v; }
+    T.ym = ym; X.daily = true;
+  });
   function dict(){ var m = {}, a = []; return {id:function(s){ if (!(s in m)) { m[s] = a.length; a.push(s); } return m[s]; }, list:a}; }
   var segD = dict(), grpD = dict(), catD = dict(), buD = dict(), regD = dict(), terD = dict(), chD = dict();
   X.sSeg = R.sku.map(function(s){ return s[2] ? segD.id(s[2]) : -1; });
@@ -1669,7 +1677,7 @@ function refresh(){ if (ALL.indexOf(current) > -1) { render(current); enter(); }
 function show(key){
   if (key === 'update-data') { if (current === null && !want) show('overview'); openUpd(); return; }
   if (ALL.indexOf(key) < 0) key = 'overview';
-  closeUpd(true);
+  closeUpd(true); closeDrill();
   want = key;
   if (busy) return;
   busy = true;
@@ -1849,7 +1857,7 @@ function drillRows(spec){
     var s = hs ? T.s[i] : -1; if (hs && M.sOn && !M.s[s]) continue;
     var y = 2000 + ((T.ym[i] / 12) | 0), m = T.ym[i] % 12 + 1; if (y !== pr.Y || !pr.P[m]) continue;
     if (spec.pred && !spec.pred(c, s)) continue;
-    out.push({ym:T.ym[i], c:c, s:s, a:T.a[i] * X.U, t:hs ? T.t[i] / 1000 : 0});
+    out.push({ym:T.ym[i], d:T.d ? T.d[i] : -1, c:c, s:s, a:T.a[i] * X.U, t:hs ? T.t[i] / 1000 : 0});
   }
   return {rows:out, period:span(pr.pl, pr.Y)};
 }
@@ -1861,22 +1869,35 @@ var DMODES = {
   m:   {n:'Month', key:function(r){ return r.ym; }, cols:['Month'], cell:function(r){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0))]; }, sort:'key'},
   md:  {n:'Month × Distributor', key:function(r){ return r.ym + '|' + r.c; }, cols:['Month', 'Distributor', 'Code', 'BU', 'Region'], cell:function(r, C){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), C[1], C[0], C[2], regName(C[3])]; }},
   all: {n:'All detail (month × distributor × product)', key:function(r){ return r.ym + '|' + r.c + '|' + r.s; }, cols:['Month', 'Distributor', 'Code', 'Product', 'Category'], cell:function(r, C, S){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), C[1], C[0], S[1], S[4]]; }},
+  day: {n:'Day', date:true, key:function(r){ return r.d; }, cols:['Date', 'Day'], cell:function(r){ return [dayText(r.d), dayName(r.d)]; }, sort:'key'},
+  dd:  {n:'Day × Distributor', date:true, key:function(r){ return r.d + '|' + r.c; }, cols:['Date', 'Distributor', 'Code', 'BU', 'Region'], cell:function(r, C){ return [dayText(r.d), C[1], C[0], C[2], regName(C[3])]; }, sort:'key'},
+  dp2: {n:'Day × Product', date:true, key:function(r){ return r.d + '|' + r.s; }, cols:['Date', 'Product', 'Code', 'Category'], cell:function(r, C, S){ return [dayText(r.d), S[1], S[0], S[4]]; }, sort:'key'},
+  dall:{n:'All detail (day × distributor × product)', date:true, key:function(r){ return r.d + '|' + r.c + '|' + r.s; }, cols:['Date', 'Distributor', 'Code', 'BU', 'Product', 'Category'], cell:function(r, C, S){ return [dayText(r.d), C[1], C[0], C[2], S[1], S[4]]; }, sort:'key'},
   line:{n:'Open order line', key:function(r, i){ return i; }, cols:['Distributor', 'Code', 'BU', 'Product', 'Order ref', 'Age (days)'], cell:function(r, C, S){ return [C[1], C[0], C[2], S[1], '#' + (r.ord + 1), r.age]; }, numcol:5}
 };
-function drillModes(k){ return k === 'P' ? ['line', 'd', 'p'] : (k === 'C' ? ['d', 'md', 'm'] : ['dp', 'd', 'p', 'm', 'all']); }
+var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function dayDate(d){ return new Date((d + 10957) * 864e5); }
+function dayText(d){ var t = dayDate(d); return ('0' + t.getUTCDate()).slice(-2) + '-' + MONS[t.getUTCMonth()] + '-' + t.getUTCFullYear(); }
+function dayName(d){ return DOW[dayDate(d).getUTCDay()]; }
+function drillModes(k){
+  if (k === 'P') return ['line', 'd', 'p'];
+  var day = IX.daily && !!IX.R[k].d;                         // day-wise views need data built by the newer Code.gs
+  if (k === 'C') return ['d'].concat(day ? ['day', 'dd'] : [], ['md', 'm']);
+  return ['dp', 'd', 'p'].concat(day ? ['day', 'dd', 'dp2', 'dall'] : [], ['m', 'all']);
+}
 function drillBuild(){
   var R = IX.R, md = DMODES[DS.mode], g = {}, list = [], hasT = DS.spec.k !== 'C';
   DS.rows.forEach(function(r, i){
     var k = md.key(r, i), e = g[k];
-    if (!e) { e = g[k] = {cells:md.cell(r, R.cust[r.c], r.s > -1 ? R.sku[r.s] : ['', '', '', '', '']), a:0, t:0, k:r.ym}; list.push(e); }
+    if (!e) { e = g[k] = {cells:md.cell(r, R.cust[r.c], r.s > -1 ? R.sku[r.s] : ['', '', '', '', '']), a:0, t:0, k:md.date ? r.d : r.ym}; list.push(e); }
     e.a += r.a; e.t += r.t;
   });
   list.forEach(function(e){ e.text = e.cells.join(' ').toLowerCase(); });
-  DS.cols = md.cols.concat(hasT ? ['Amount (৳)', 'TON'] : ['Amount (৳)']); DS.nText = md.cols.length; DS.numcol = md.numcol; DS.hasT = hasT;
-  DS.list = list; DS.sort = md.sort === 'key' ? {c:-1, d:1} : {c:DS.spec.ton ? md.cols.length + 1 : md.cols.length, d:-1};
+  DS.cols = md.cols.concat(hasT ? ['Amount (৳)', 'TON'] : ['Amount (৳)']); DS.nText = md.cols.length; DS.numcol = md.numcol; DS.hasT = hasT; DS.date = !!md.date;
+  DS.list = list; DS.sort = md.sort === 'key' ? {c:md.date ? 0 : -1, d:1} : {c:DS.spec.ton ? md.cols.length + 1 : md.cols.length, d:-1};
   drillShow(true);
 }
-function drillVal(e, c){ return c === -1 ? e.k : (c < DS.nText ? e.cells[c] : (c === DS.nText ? e.a : e.t)); }
+function drillVal(e, c){ return c === -1 || (c === 0 && DS.date) ? e.k : (c < DS.nText ? e.cells[c] : (c === DS.nText ? e.a : e.t)); }
 function drillShow(reset){
   var tk = dr.q.value.toLowerCase().split(/\s+/).filter(Boolean);
   var f = tk.length ? DS.list.filter(function(e){ return tk.every(function(k){ return e.text.indexOf(k) > -1; }); }) : DS.list.slice();
@@ -1901,7 +1922,7 @@ function openDrill(spec){
   var got = drillRows(spec), ft = filterText(), modes = drillModes(spec.k);
   DS = {spec:spec, rows:got.rows, mode:modes[0]};
   dr.t.textContent = spec.title;
-  dr.s.textContent = got.period + (ft ? '  ·  Filter: ' + ft.replace(/\s{2,}/g, ' ') : '') + '  ·  ' + (spec.k === 'P' ? 'Open order lines (ordered, not yet delivered).' : 'Monthly totals per distributor' + (spec.k === 'C' ? '' : ' and product') + '. Single order lines are not kept in the dashboard.');
+  dr.s.textContent = got.period + (ft ? '  ·  Filter: ' + ft.replace(/\s{2,}/g, ' ') : '') + '  ·  ' + (spec.k === 'P' ? 'Open order lines (ordered, not yet delivered).' : (IX.daily ? 'Daily' : 'Monthly') + ' totals per distributor' + (spec.k === 'C' ? '' : ' and product') + '. Single order lines are not kept in the dashboard.');
   dr.m.innerHTML = modes.map(function(m){ return opt(m, DMODES[m].n, DS.mode); }).join('');
   dr.q.value = ''; drillBuild(); dr.ov.classList.add('on');
 }
