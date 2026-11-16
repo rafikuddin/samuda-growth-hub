@@ -559,7 +559,7 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
 var DATA_URL = 'data.json';
-/* Sign-in mode: put the Apps Script web-app link in config.json  {"api":"https://script.google.com/macros/s/.../exec"}
+/* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
    (or here). With a link the page asks for a user name and password and reads the data from Google.
    Without one it reads the public data.json next to this page. */
 var API_URL = '';
@@ -1758,7 +1758,7 @@ function boot(){
   try { cfg = fetch('config.json?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : {}; }).catch(function(){ return {}; }); } catch(e){ cfg = Promise.resolve({}); }
   cfg.then(function(c){
     API = String((c && c.api) || API_URL || '').trim();
-    AUTH = /^https:\/\/script\.google(usercontent)?\.com\//.test(API);
+    AUTH = /^https:\/\/[^\/\s]+\//.test(API + '/');        // an Apps Script link or a Cloudflare Worker link
     if (!AUTH) { loadFile(); return; }
     TOKEN = getTok();
     if (!TOKEN) { showLogin(); return; }
