@@ -272,8 +272,8 @@ body.locked .app{visibility:hidden}
 
 /* ---------- filter bar ---------- */
 .fbar{position:relative;z-index:5;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px;border-radius:24px;padding:12px 16px}
-.fl{display:flex;flex-direction:column;gap:4px;flex:1 1 118px;min-width:104px}
-.fl.wide{flex:1.6 1 170px}
+.fl{display:flex;flex-direction:column;gap:4px;flex:1 1 100px;min-width:92px}
+.fl.wide{flex:1.5 1 140px}
 .fl span{font-size:9.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding-left:2px}
 .fl select{width:100%;height:36px;padding:0 28px 0 11px;border-radius:12px;border:1px solid var(--line);background-color:rgba(255,255,255,.06);color:var(--ink);font:500 12.5px var(--f-body);cursor:pointer;
   -webkit-appearance:none;appearance:none;text-overflow:ellipsis;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23BDB2AD' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
@@ -629,9 +629,15 @@ var MONL = ['January','February','March','April','May','June','July','August','S
 var MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var CRD = 1e7;
 var RAW = null, IX = null;
-var F = {year:null, month:'auto', bu:'', reg:'', ter:'', dist:'', cat:''};
+var F = {year:null, month:'auto', span:'ytd', bu:'', reg:'', ter:'', dist:'', cat:''};   // month: 'auto' or '1'..'12'; span: 'ytd' (January to that month) or 'mtd' (that month only)
 var LSF = 'samuda-growth-hub-filters';
 try { var sf = JSON.parse(localStorage.getItem(LSF)); if (sf && typeof sf === 'object') for (var fk in F) if (sf[fk] != null) F[fk] = sf[fk]; } catch(e){}
+(function(){      // filters saved by an older version of the page
+  var m = String(F.month);
+  if (m.indexOf('ytd-') === 0) { F.month = m.slice(4); F.span = 'ytd'; } else if (m.indexOf('m-') === 0) { F.month = m.slice(2); F.span = 'mtd'; }
+  if (F.month !== 'auto' && !(+F.month >= 1 && +F.month <= 12)) F.month = 'auto'; else if (F.month !== 'auto') F.month = String(+F.month);
+  if (F.span !== 'mtd') F.span = 'ytd';
+})();
 function saveF(){ try { localStorage.setItem(LSF, JSON.stringify(F)); } catch(e){} }
 function validRaw(d){ try { return !!d && d.v >= 5 && d.O.a.length > 0 && d.cust.length > 0 && d.sku.length > 0 && !!d.meta.order; } catch(e){ return false; } }
 function pd(s){ if (!s) return null; var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
@@ -703,10 +709,11 @@ function pyCovered(k, Y, m){ var f = pd(IX.meta[k].first); return !!f && f <= ne
 function commonTill(Y){ var t = ['O','D','C'].map(function(k){ return autoTill(k, Y); }).filter(function(x){ return x > 0; }); return t.length ? Math.min.apply(null, t) : 12; }
 /* months of the selected period for measure k; growth=true uses the like-for-like start in Auto */
 function period(k, growthView){
-  var Y = F.year, a = 1, b = 12, mode = F.month || 'auto';
-  if (mode === 'auto') { b = growthView ? autoTill(k, Y) : commonTill(Y); a = growthView ? autoFrom(k, Y) : 1; if (b < a) a = 1; }
-  else if (mode.indexOf('ytd-') === 0) { b = +mode.slice(4); }
-  else if (mode.indexOf('m-') === 0) { a = b = +mode.slice(2); }
+  var Y = F.year, a = 1, b = 12, mtd = F.span === 'mtd';
+  if (F.month === 'auto') {                       // latest full month in the data
+    b = growthView ? autoTill(k, Y) : commonTill(Y);
+    if (mtd) a = b; else { a = growthView ? autoFrom(k, Y) : 1; if (b < a) a = 1; }
+  } else { b = +F.month; a = mtd ? b : 1; }       // MTD = that month only, YTD = January to that month
   var P = [], L = [];
   for (var m = 1; m <= 12; m++) { P[m] = m >= a && m <= b && b > 0; L[m] = P[m] && pyCovered(k, Y, m); }
   var pl = [], ll = []; for (m = 1; m <= 12; m++) { if (P[m]) pl.push(m); if (L[m]) ll.push(m); }
@@ -805,7 +812,7 @@ function growthView(k, M){
   var ban = [];
   var first = pd(meta.first);
   if (natPY <= 0) ban.push('⚠  No ' + (Y - 1) + ' ' + lab[2] + ' found for ' + span(pr.pl, Y - 1) + ' – growth shows n/a' + (M.any ? ' for this filter.' : ' until ' + (Y - 1) + ' ' + lab[2] + ' are added and refreshed.'));
-  else if (F.month === 'auto' && pr.a > 1) ban.push('ℹ  Like-for-like from ' + MONL[pr.a - 1] + ': ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
+  else if (F.month === 'auto' && F.span !== 'mtd' && pr.a > 1) ban.push('ℹ  Like-for-like from ' + MONL[pr.a - 1] + ': ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
   else if (!pr.same) ban.push('ℹ  Growth compares ' + span(pr.ll) + ' only: ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
   if (la && lany && lany > la && la.getFullYear() === Y && pr.b >= la.getMonth() + 1) ban.push((k === 'O' ? 'Total Amount' : 'The amount') + ' is blank for rows after ' + fdate(la) + ', so the report stops at ' + MONL[la.getMonth()] + ' ' + la.getFullYear() + '.');
   if (isC && M.sOn) ban.push('ℹ  Product category does not apply here: collection is booked per customer, not per product.');
@@ -862,7 +869,7 @@ function extViews(M){
     mon:{order:mon(O, pO), delivery:mon(D, pO), collection:mon(C, pO), orderPY:pmon(O, 'O'), collectionPY:pmon(C, 'C')},
     ton:{order:mon(OT, pO), delivery:mon(DT, pO)}, dton:Math.round(DT.cy[0] * 10) / 10, hl:hl,
     foot:'Order = Total Amount (SALES_ORDER), Delivery = Delivery Amount (DELIVERY_ORDER), Collection = Collection Amount (PRIMARY_SALES_COLLECTION). Volume = quantity × TON_COV_FACTOR from SKU_MASTER (free products excluded). ' +
-      (F.month === 'auto' ? 'Period ' + P + ' = last month all three sources have complete. ' : '') + 'Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
+      (F.month === 'auto' ? 'Period ' + P + (F.span === 'mtd' ? ' = the last month' : ' runs to the last month') + ' all three sources have complete. ' : '') + 'Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
 
   // business units (customer BU)
   var nb = X.bu.length, byBu = function(i, c){ return X.cBu[c]; };
@@ -1140,24 +1147,23 @@ function filterLists(){
 function monthOptions(){
   var last = 0; ['O','D','C'].forEach(function(k){ var d = pd(IX.meta[k].lastAny); if (d) last = Math.max(last, d.getFullYear() > F.year ? 12 : (d.getFullYear() < F.year ? 0 : d.getMonth() + 1)); });
   last = last || 12;
-  if (F.month !== 'auto' && +F.month.split('-')[1] > last) F.month = 'auto';
-  var h = opt('auto', 'Auto (latest full month)', F.month) + '<optgroup label="Year to date">';
-  for (var m = 1; m <= last; m++) h += opt('ytd-' + m, 'YTD ' + MONS[m - 1], F.month);
-  h += '</optgroup><optgroup label="Single month">';
-  for (m = 1; m <= last; m++) h += opt('m-' + m, MONS[m - 1], F.month);
-  return h + '</optgroup>';
+  if (F.month !== 'auto' && +F.month > last) F.month = 'auto';
+  var h = opt('auto', 'Auto (latest full month)', F.month);
+  for (var m = 1; m <= last; m++) h += opt(String(m), MONL[m - 1], F.month);
+  return h;
 }
 function filterHTML(){
   if (!IX) return '';
-  var L = filterLists(), any = F.bu || F.reg || F.ter || F.dist || F.cat || F.month !== 'auto' || F.year !== IX.defYear;
-  var sel = function(id, label, body, wide){ return '<label class="fl' + (wide ? ' wide' : '') + '"><span>' + label + '</span><select data-f="' + id + '"' + (F[id] && id !== 'year' && !(id === 'month' && F.month === 'auto') ? ' class="on"' : '') + '>' + body + '</select></label>'; };
+  var L = filterLists(), any = F.bu || F.reg || F.ter || F.dist || F.cat || F.month !== 'auto' || F.span !== 'ytd' || F.year !== IX.defYear;
+  var sel = function(id, label, body, wide){ return '<label class="fl' + (wide ? ' wide' : '') + '"><span>' + label + '</span><select data-f="' + id + '"' + (F[id] && id !== 'year' && !(id === 'month' && F.month === 'auto') && !(id === 'span' && F.span === 'ytd') ? ' class="on"' : '') + '>' + body + '</select></label>'; };
   var all = function(list, cur){ return opt('', 'All', cur) + list.map(function(x){ return opt(x, x, cur); }).join(''); };
-  var ml = F.month === 'auto' ? 'Auto' : (F.month.indexOf('ytd-') === 0 ? 'YTD ' : '') + MONS[+F.month.split('-')[1] - 1];
+  var ml = (F.span === 'mtd' ? 'MTD ' : 'YTD ') + (F.month === 'auto' ? 'Auto' : MONS[+F.month - 1]);
   var nAct = [F.bu, F.reg, F.ter, F.dist, F.cat].filter(Boolean).length, ft = filterText();
   return '<div class="fbar glass' + (FOPEN ? ' open' : '') + '" id="fbar">' +
     '<button class="ftg" id="ftg" type="button" aria-expanded="' + FOPEN + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><b>Filters</b>' +
     (nAct ? '<i>' + nAct + '</i>' : '') + '<span>' + esc(F.year + ' · ' + ml + (ft ? ' · ' + ft.replace(/\s{2,}/g, ' ') : '')) + '</span><svg class="chv" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' +
     sel('year', 'Year', IX.years.map(function(y){ return opt(y, y, F.year); }).join('')) + sel('month', 'Month', monthOptions()) +
+    sel('span', 'Period', opt('ytd', 'YTD (Year to date)', F.span) + opt('mtd', 'MTD (Month to date)', F.span)) +
     sel('bu', 'Business Unit', all(L.bu, F.bu)) + sel('reg', 'Region', all(L.reg, F.reg)) + sel('ter', 'Territory', all(L.ter, F.ter)) +
     cbHTML(L) +
     sel('cat', 'Product Category', all(L.cat, F.cat)) +
@@ -1209,7 +1215,7 @@ function wireFilters(){
     var k = el.dataset.f; F[k] = k === 'year' ? +el.value : el.value;
     applyFilters(k);
   }); });
-  var r = $('#frs', stage); if (r) r.addEventListener('click', function(){ F.year = IX.defYear; F.month = 'auto'; F.bu = F.reg = F.ter = F.dist = F.cat = ''; applyFilters(); });
+  var r = $('#frs', stage); if (r) r.addEventListener('click', function(){ F.year = IX.defYear; F.month = 'auto'; F.span = 'ytd'; F.bu = F.reg = F.ter = F.dist = F.cat = ''; applyFilters(); });
 }
 function applyFilters(focus){
   saveF(); DATA = compute();
