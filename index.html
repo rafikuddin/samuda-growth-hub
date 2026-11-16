@@ -601,7 +601,7 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '16-Nov-2026 · v31';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '16-Nov-2026 · v32';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
    (or here). With a link the page asks for a user name and password and reads the data from Google.
@@ -1675,10 +1675,10 @@ function renderDlg(){
   if (AUTH) return x + '<h2 id="updT">Update the numbers</h2><p class="sub">The data is built from your Google Sheets by the Admin Sheet</p>' +
     '<div class="srcl" id="ghs">' + ghText() + '</div><ol>' +
     '<li>Put the new dump into its Google Sheet: <b>File → Import → Upload</b>, choose the dump file, <b>Replace spreadsheet</b>.</li>' +
-    '<li>With auto-update on, the data is rebuilt by itself within 5–10 minutes. To do it at once: <b>Dashboard Admin</b> Sheet → <b>Dashboard → Update data now</b>.</li>' +
-    '<li>This page picks up new data by itself every few minutes, or press <b>Reload data</b> here.</li></ol>' +
+    '<li>Press <b>Update &amp; reload</b> here. It rebuilds the data from the Google Sheets (the same as <b>Dashboard → Update data now</b> in the Admin Sheet) and then shows it. This takes 1–3 minutes.</li>' +
+    '<li>With auto-update on, this also happens by itself within 5–10 minutes, and this page picks up the new data.</li></ol>' +
     '<div class="msg" id="msg" role="status" aria-live="polite"></div>' +
-    '<div class="btns"><button class="btn" id="reload" type="button">Reload data</button></div>';
+    '<div class="btns"><button class="btn" id="reload" type="button">Update &amp; reload</button></div>';
   return x + '<h2 id="updT">Update the numbers</h2><p class="sub">GitHub builds <b>data.json</b> from the Google Sheet; every view reads that file</p>' +
     '<div class="srcl" id="ghs">' + ghText() + '</div><ol>' +
     '<li>Put the new dump into the Google Sheet: <b>File → Import → Upload</b>, choose the dump file, <b>Replace spreadsheet</b>.</li>' +
@@ -1819,8 +1819,8 @@ function emptyHTML(){
   var load = GHSTATE === 'loading';
   if (AUTH) return headHTML({title:'Samuda Growth Hub', sub:load ? 'LOADING DATA' : 'NO DATA', cmp:load ? 'Reading the data…' : ''}) +
     (load ? '<div class="banner note" data-rise>Reading the data…</div>' :
-     GHSTATE === 'nodata' ? '<div class="banner warn" data-rise>⚠  No dashboard data has been built yet. In the Dashboard Admin Google Sheet choose Dashboard → Update data now, then press Update data → Reload data here.</div>' :
-     '<div class="banner warn" data-rise>⚠  Could not reach the data service. Check the internet connection, then press Update data → Reload data.</div>');
+     GHSTATE === 'nodata' ? '<div class="banner warn" data-rise>⚠  No dashboard data has been built yet. In the Dashboard Admin Google Sheet choose Dashboard → Update data now, then press Update data → Update & reload here.</div>' :
+     '<div class="banner warn" data-rise>⚠  Could not reach the data service. Check the internet connection, then press Update data → Update & reload.</div>');
   return headHTML({title:'Samuda Growth Hub', sub:load ? 'LOADING DATA' : 'NO DATA', cmp:load ? 'Reading data.json…' : 'data.json was not found'}) +
     (load ? '<div class="banner note" data-rise>Reading data.json…</div>' :
     '<div class="banner warn" data-rise>⚠  Could not read data.json. Upload data.json to the same GitHub repository as index.html and open the page from its GitHub Pages link. Press Update data for the steps.</div>');
@@ -2172,11 +2172,38 @@ function wireUpdate(){
   var msg = $('#msg');
   function say(t, ok){ msg.textContent = t; msg.className = 'msg ' + (ok ? 'ok' : 'err'); }
   $('#reload').addEventListener('click', function(){
-    var b = this; b.disabled = true; say(AUTH ? 'Reading the data…' : 'Reading data.json…', true);
-    loadGitHub().then(function(ok){
-      b.disabled = false;
-      say(ok ? 'Loaded data built ' + SRC.at + '.' : (AUTH ? (GHSTATE === 'nodata' ? 'No data has been built yet.' : 'Could not read the data. Try again.') : 'Could not read data.json. Check that it is uploaded next to index.html.'), ok);
-    });
+    var b = this; b.disabled = true;
+    function done(note){
+      loadGitHub().then(function(ok){
+        b.disabled = false;
+        if (note && ok) { say(note.t + ' Showing data built ' + SRC.at + '.', note.ok); return; }
+        say(ok ? 'Loaded data built ' + SRC.at + '.' : (AUTH ? (GHSTATE === 'nodata' ? 'No data has been built yet.' : 'Could not read the data. Try again.') : 'Could not read data.json. Check that it is uploaded next to index.html.'), ok);
+      });
+    }
+    if (!AUTH || !TOKEN) { say(AUTH ? 'Reading the data…' : 'Reading data.json…', true); done(); return; }
+    /* signed in: first rebuild the data from the Google Sheets (same as Dashboard > Update data now), then load it */
+    var was = SRC.at, t0 = Date.now(), tick = setInterval(function(){
+      var s = Math.round((Date.now() - t0) / 1000);
+      say('Updating from Google Sheets… ' + (s < 60 ? s + ' s' : Math.floor(s / 60) + ' min ' + (s % 60) + ' s') + ' (this takes 1–3 minutes, keep this page open)', true);
+    }, 1000);
+    say('Updating from Google Sheets… (this takes 1–3 minutes, keep this page open)', true);
+    function stop(){ clearInterval(tick); }
+    function waitNew(){                 // the answer was lost or another update is running: watch for the new build
+      api({action:'ver', token:TOKEN}).then(function(j){
+        if (j && j.error === 'auth') { stop(); b.disabled = false; lockOut('Your session has ended. Please sign in again.'); return; }
+        if (j && j.ok && j.built && j.built !== was) { stop(); done(); return; }
+        if (Date.now() - t0 > 6 * 60 * 1000) { stop(); done({t:'The update did not finish in time. Check Dashboard → Auto-update status in the Admin Sheet.', ok:false}); return; }
+        setTimeout(waitNew, 10000);
+      }, function(){ if (Date.now() - t0 > 6 * 60 * 1000) { stop(); done({t:'Could not reach the data service.', ok:false}); } else setTimeout(waitNew, 10000); });
+    }
+    api({action:'rebuild', token:TOKEN}).then(function(j){
+      if (j && j.ok) { stop(); done(); return; }
+      if (j && j.error === 'auth') { stop(); b.disabled = false; lockOut('Your session has ended. Please sign in again.'); return; }
+      if (j && j.error === 'busy') { waitNew(); return; }
+      if (j && j.error === 'build') { stop(); done({t:'Could not update: ' + j.message, ok:false}); return; }
+      if (j && j.error === 'bad') { stop(); done({t:'This button cannot start an update yet (install the newest Code.gs' + (/script\.google\.com/.test(API) ? '' : ' and worker.js') + ').', ok:false}); return; }
+      waitNew();
+    }, waitNew);
   });
 }
 /* mobile drawer */
