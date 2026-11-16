@@ -254,6 +254,15 @@ body.locked .app{visibility:hidden}
 .lgw{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 0 10px;font-size:13.5px;color:#D9CFCA}
 .lgc.busy form{display:none} .lgc:not(.busy) .lgw{display:none}
 .lgt{text-align:center;font-size:10.5px;color:#8F8380;letter-spacing:.04em}
+.dlg.pwd{width:min(430px,100%)}
+.pwd form{display:flex;flex-direction:column;gap:12px}
+.pwd .lgf label{color:var(--faint)}
+.pwd .lgi input{border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink)}
+.pwbar{height:5px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:7px}
+.pwbar i{display:block;height:100%;width:0;border-radius:5px;background:var(--bad);transition:width .25s,background-color .25s}
+.pwh{font-size:11.5px;color:var(--faint);margin-top:1px}
+.sobs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.sobs .sob{margin-top:0}
 .sob{margin-top:8px;width:100%;height:34px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--mut);font:600 12px var(--f-body);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
 .sob:hover{background:rgba(255,255,255,.11);color:var(--ink)}
 .sob svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
@@ -487,6 +496,19 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 
 <div class="ov" id="ovUpd" role="dialog" aria-modal="true" aria-labelledby="updT"><div class="dlg glass" id="dlg"></div></div>
 <div class="ov" id="ovPal" role="dialog" aria-modal="true" aria-label="Jump to"><div class="pal glass"><input id="palq" type="text" placeholder="Jump to a view…" autocomplete="off" spellcheck="false"><ul id="pall"></ul></div></div>
+<div class="ov" id="ovPw" role="dialog" aria-modal="true" aria-labelledby="pwT"><div class="dlg glass pwd">
+  <button class="ib x" id="pwx" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  <h2 id="pwT">Change password</h2><p class="sub" id="pwsub">Choose a new password for your account</p>
+  <form id="pwform" autocomplete="off" novalidate>
+    <div class="lgf"><label for="pwo">Current password</label><div class="lgi"><input class="pw" id="pwo" type="password" autocomplete="current-password"></div></div>
+    <div class="lgf"><label for="pwn">New password</label><div class="lgi"><input class="pw" id="pwn" type="password" autocomplete="new-password">
+      <button type="button" id="pweye" aria-label="Show passwords" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+      <div class="pwbar"><i id="pwlv"></i></div><small class="pwh" id="pwh">At least 8 characters. A mix of letters, numbers and symbols is stronger.</small></div>
+    <div class="lgf"><label for="pwr">Repeat new password</label><div class="lgi"><input class="pw" id="pwr" type="password" autocomplete="new-password"></div></div>
+    <div class="msg" id="pwmsg" role="alert" aria-live="assertive"></div>
+    <div class="btns"><button class="btn alt" id="pwc" type="button">Cancel</button><button class="btn" id="pwb" type="submit">Save new password</button></div>
+  </form>
+</div></div>
 <div class="lgn" id="login" hidden>
   <div class="lgc" id="lgc">
     <svg class="msc" id="msc" viewBox="0 0 200 200" aria-hidden="true">
@@ -1520,8 +1542,11 @@ function updateChrome(key){
           : '<div class="who"><span class="av">SC</span><div><b>GitHub data.json</b><small>' + esc(SRC.at) + '</small></div></div>');
   wireSignOut();
 }
-function signOutBtn(){ return '<button class="sob" id="sob" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/></svg>Sign out</button>'; }
-function wireSignOut(){ var b = $('#sob'); if (b) b.addEventListener('click', signOut); }
+function signOutBtn(){
+  return '<div class="sobs"><button class="sob" id="pwo2" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>Password</button>' +
+    '<button class="sob" id="sob" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/></svg>Sign out</button></div>';
+}
+function wireSignOut(){ var b = $('#sob'); if (b) b.addEventListener('click', signOut); var c = $('#pwo2'); if (c) c.addEventListener('click', openPw); }
 var ovU = $('#ovUpd'), dlg = $('#dlg'), ovP = $('#ovPal'), palq = $('#palq'), pall = $('#pall');
 function wireView(){
   var q = function(s, f){ var e = $(s, stage); if (e) e.addEventListener('click', f); };
@@ -1667,7 +1692,7 @@ function showLogin(message, checking){
 function hideLogin(){ lg.ov.hidden = true; document.body.classList.remove('locked'); lg.card.classList.remove('busy'); }
 function lockOut(message){
   clearTok(); DATA = null; RAW = null; IX = null; USER = ''; SRC = {kind:'none', at:''}; GHSTATE = 'loading';
-  closeUpd(true); closePal(); closeNav();
+  closeUpd(true); closePal(); closeNav(); closePw();
   if (current && ALL.indexOf(current) > -1) render(current);
   showLogin(message);
 }
@@ -1693,6 +1718,40 @@ lg.form.addEventListener('submit', function(e){
     GHSTATE = 'loading'; lgBusy(false); mRest(); mMouth('sad');
     lgSay('Could not reach the sign-in service. Check your internet connection and try again.');
   });
+});
+/* ---------- change password ---------- */
+var pw = {ov:$('#ovPw'), form:$('#pwform'), o:$('#pwo'), n:$('#pwn'), r:$('#pwr'), eye:$('#pweye'), msg:$('#pwmsg'), b:$('#pwb'), lv:$('#pwlv'), h:$('#pwh'), sub:$('#pwsub')};
+function pwSay(t, ok){ pw.msg.textContent = t || ''; pw.msg.className = 'msg' + (t ? (ok ? ' ok' : ' err') : ''); }
+function pwScore(v){ var s = 0; if (v.length >= 8) s++; if (v.length >= 12) s++; if (/[a-z]/.test(v) && /[A-Z]/.test(v)) s++; if (/\d/.test(v)) s++; if (/[^A-Za-z0-9]/.test(v)) s++; return v.length < 8 ? Math.min(s, 1) : s; }
+function pwMeter(){
+  var v = pw.n.value, sc = v ? pwScore(v) : 0, lab = ['', 'Too short', 'Weak', 'Fair', 'Good', 'Strong'][v && v.length < 8 ? 1 : Math.max(sc, v ? 2 : 0)];
+  pw.lv.style.width = (v ? Math.max(12, sc * 20) : 0) + '%'; pw.lv.style.backgroundColor = sc >= 4 ? 'var(--good)' : (sc === 3 ? 'var(--gold)' : 'var(--bad)');
+  pw.h.textContent = v ? lab + (v.length < 8 ? ': at least 8 characters.' : (sc < 4 ? '. Add capital letters, numbers or symbols to make it stronger.' : '.')) : 'At least 8 characters. A mix of letters, numbers and symbols is stronger.';
+}
+function openPw(){
+  closeNav(); pw.form.reset(); [pw.o, pw.n, pw.r].forEach(function(i){ i.type = 'password'; }); pw.eye.setAttribute('aria-pressed', 'false');
+  pwSay(''); pwMeter(); pw.b.disabled = false; pw.b.textContent = 'Save new password'; pw.sub.textContent = 'Choose a new password for ' + (USER || 'your account');
+  pw.ov.classList.add('on'); setTimeout(function(){ try { pw.o.focus(); } catch(e){} }, 80);
+}
+function closePw(){ pw.ov.classList.remove('on'); }
+$('#pwx').addEventListener('click', closePw); $('#pwc').addEventListener('click', closePw);
+pw.ov.addEventListener('mousedown', function(e){ if (e.target === pw.ov) closePw(); });
+pw.n.addEventListener('input', pwMeter);
+pw.eye.addEventListener('click', function(){ var show = pw.n.type === 'password'; [pw.o, pw.n, pw.r].forEach(function(i){ i.type = show ? 'text' : 'password'; }); pw.eye.setAttribute('aria-pressed', show); });
+pw.form.addEventListener('submit', function(e){
+  e.preventDefault();
+  var o = pw.o.value, n = pw.n.value, r = pw.r.value;
+  if (!o) { pwSay('Enter your current password.'); pw.o.focus(); return; }
+  if (n.length < 8) { pwSay('The new password needs at least 8 characters.'); pw.n.focus(); return; }
+  if (n !== r) { pwSay('The two new passwords are not the same.'); pw.r.focus(); return; }
+  if (n === o) { pwSay('The new password must be different from the current one.'); pw.n.focus(); return; }
+  pw.b.disabled = true; pw.b.textContent = 'Saving…'; pwSay('');
+  api({action:'password', token:TOKEN, old:o, new:n}).then(function(j){
+    if (j && j.ok) { pwSay('Password changed. Use the new password next time you sign in.', true); pw.form.reset(); pwMeter(); pw.b.textContent = 'Saved'; setTimeout(closePw, 1600); return; }
+    if (j && j.error === 'auth') { closePw(); lockOut('Your session has ended. Please sign in again.'); return; }
+    pw.b.disabled = false; pw.b.textContent = 'Save new password'; pwSay((j && j.message) || 'Could not change the password. Try again.');
+    if (j && j.error === 'old') { pw.o.value = ''; pw.o.focus(); }
+  }, function(){ pw.b.disabled = false; pw.b.textContent = 'Save new password'; pwSay('Could not reach the service. Check your internet connection and try again.'); });
 });
 function boot(){
   var cfg;
@@ -1765,7 +1824,7 @@ ovP.addEventListener('mousedown', function(e){ if (e.target === ovP) closePal();
 ovU.addEventListener('mousedown', function(e){ if (e.target === ovU) closeUpd(); });
 document.addEventListener('keydown', function(e){
   if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openPal(); }
-  else if (e.key === 'Escape') { closePal(); closeUpd(); closeNav(); }
+  else if (e.key === 'Escape') { closePal(); closeUpd(); closeNav(); closePw(); }
 });
 var LST = 'samuda-growth-hub-theme';
 function applyTheme(t){ if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }
