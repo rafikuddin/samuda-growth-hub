@@ -601,6 +601,7 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
+var PAGE_VERSION = '16-Nov-2026 · v31';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
    (or here). With a link the page asks for a user name and password and reads the data from Google.
@@ -1278,7 +1279,7 @@ function renderView(key){
 function srcLabel(){ return SRC.kind === 'sheet' ? 'Google Sheets, built ' + SRC.at : (SRC.kind === 'github' ? 'GitHub data.json, built ' + SRC.at : 'no data loaded'); }
 function initials(n){ var p = String(n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || 'S').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : (p[0] || 'SC').charAt(1) || '')).toUpperCase(); }
 function footHTML(){
-  return '<footer class="foot" data-rise><span>SAMUDA SPEC-CHEM LIMITED  |  Adhesive  |  Thinner  |  DOP  |  Build · Bond · Better</span><span>Figures come from the Excel workbook (' + esc(srcLabel()) + ')</span></footer>';
+  return '<footer class="foot" data-rise><span>SAMUDA SPEC-CHEM LIMITED  |  Adhesive  |  Thinner  |  DOP  |  Build · Bond · Better</span><span>Data: ' + esc(srcLabel()) + '  ·  Page version ' + esc(PAGE_VERSION) + '</span></footer>';
 }
 function headHTML(D){
   var cl = function(s){ return esc(String(s || '').replace(/\s{2,}/g, ' ')); };
@@ -1792,7 +1793,7 @@ function updateChrome(key){
   });
   var arr = VIEWS.indexOf(key) > -1 ? DATA.views[key].mon.cy : DATA.ext.overview.mon.order, months = arr.filter(function(v){ return v != null; }).length, p = Math.round(months / 12 * 100);
   $('#srcnote').innerHTML = '<div class="pace"><div class="r1"><span>Year covered</span><b>' + p + '%</b></div><div class="bar"><i style="width:' + p + '%"></i></div>' + months + ' of 12 months reported</div>' +
-    (AUTH ? '<div class="who"><span class="av">' + esc(initials(USER)) + '</span><div><b>' + esc(USER || 'Signed in') + '</b><small>Data built ' + esc(SRC.at) + '</small></div></div>' + signOutBtn()
+    (AUTH ? '<div class="who"><span class="av">' + esc(initials(USER)) + '</span><div><b>' + esc(USER || 'Signed in') + '</b><small>Data built ' + esc(SRC.at) + '</small><small>Page ' + esc(PAGE_VERSION) + '</small></div></div>' + signOutBtn()
           : '<div class="who"><span class="av">SC</span><div><b>GitHub data.json</b><small>' + esc(SRC.at) + '</small></div></div>');
   wireSignOut();
 }
