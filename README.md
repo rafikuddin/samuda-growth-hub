@@ -1,67 +1,76 @@
 # Samuda Growth Hub
 
-Animated sales dashboard for Samuda Spec-Chem Limited (Adhesive, Thinner, DOP), published with GitHub Pages.
+Animated sales dashboard for Samuda Spec-Chem Limited (Adhesive, Thinner, DOP).
 
-## Files in this repository
+* The **page** (`index.html`) is published with GitHub Pages.
+* The **data** stays in your Google account. A Google Apps Script builds it from your Google Sheets and gives it only to people who sign in with a user name and password.
 
-| File | What it is |
-|---|---|
-| `index.html` | The dashboard page: 8 views, with the filter bar (Year, Month, Business Unit, Region, Territory, Distributor, Product Category) at the top of every view |
-| `data.json` | All the numbers. The page reads this file every time it opens |
-| `build_data.py` | Makes `data.json` from the Excel files (dump, product master, customer master) |
-| `update_data.bat` | Double-click on Windows to run `build_data.py` |
-| `.github/workflows/update-dashboard.yml` | The automatic update: rebuilds `data.json` and republishes after every upload |
+## Files
 
-The Excel files are needed in the repository only for the automatic update (section C).
+| File | Where it goes | What it is |
+|---|---|---|
+| `index.html` | GitHub | The dashboard page with the sign-in screen |
+| `config.json` | GitHub | Holds the link of your Apps Script web app |
+| `.github/workflows/update-dashboard.yml` | GitHub | Publishes the page after every change |
+| `Code.gs` | Google Apps Script | Builds the data and checks the sign-in |
 
-## A. First-time GitHub setup
+## Part 1 - Google Sheets
 
-1. Go to https://github.com and sign up (or sign in).
-2. Click **+** (top right) → **New repository**.
-   * Repository name: `samuda-growth-hub`
-   * Choose **Public**. GitHub Pages on a free account works only for public repositories. (A private repository needs a paid plan such as GitHub Pro, and the published page is still open to anyone who has the link.)
-   * Tick **Add a README file** → **Create repository**.
-3. In the repository click **Add file → Upload files**. Drag in `index.html`, `data.json`, `build_data.py`, `update_data.bat`, `README.md` → **Commit changes**.
+1. **Source Sheets** (one per Excel file). In a blank Google Sheet: **File → Import → Upload** → choose the file → **Replace spreadsheet**.
+   * Dump → tabs `SALES_ORDER`, `PRIMARY_SALES_COLLECTION`, `DELIVERY_ORDER`
+   * Product master → tab `SKU_MASTER`
+   * Customer master → tabs `Adhesive`, `Corporate`, `Thinner`
+   These Sheets can stay **private** (Share → Restricted). Do not rename the tabs or the headings in row 1.
+2. **Admin Sheet.** Create one more blank Google Sheet and name it `Dashboard Admin`.
+3. In the Admin Sheet: **Extensions → Apps Script**. Delete the sample code, paste everything from `Code.gs`, press **Save** (disk icon).
+4. Go back to the Admin Sheet and reload the page. A new menu **Dashboard** appears. Choose **Dashboard → Set up (first time)**.
+   Google asks for permission once: **Continue → choose your account → Advanced → Go to (project name) → Allow**. Then choose **Set up** again.
+5. Tab **Sources**: paste the links of the three source Sheets in column A (one per row).
+6. Tab **Users**: one row per person - `Username`, `Password`, `Name`, `Active` (Yes/No). Change the sample `admin` password.
+7. **Dashboard → Update data now**. After 1–3 minutes a message shows the row counts.
 
-## B. Turn on GitHub Pages
+## Part 2 - Turn the script into a web app
 
-1. Add the workflow file: **Add file → Create new file**, type the name `.github/workflows/update-dashboard.yml`, paste the contents of `update-dashboard.yml`, **Commit changes**.
-2. Open **Settings** (top menu) → **Pages** (left menu).
-3. Under **Build and deployment → Source** choose **GitHub Actions**.
-4. Open the **Actions** tab → **Update dashboard** → **Run workflow**. After the green tick the link is shown in the run and in Settings → Pages:
-   `https://<your-username>.github.io/samuda-growth-hub/`
-5. Open the link. Bottom-left of the dashboard should say **GitHub data.json** with the build date.
+1. In the Apps Script editor: **Deploy → New deployment**.
+2. Gear icon → **Web app**.
+3. **Execute as: Me**. **Who has access: Anyone**. Press **Deploy**.
+4. Copy the **Web app URL** (it ends with `/exec`).
 
-## C. Automatic update (GitHub does the work)
+"Anyone" only means anyone can reach the sign-in check; the data is given only after a correct user name and password.
 
-Needs `.github/workflows/update-dashboard.yml` in the repository and **Settings → Pages → Source = GitHub Actions**.
+If you change `Code.gs` later: **Deploy → Manage deployments → pencil → Version: New version → Deploy** (the link stays the same).
 
-1. On GitHub: **Add file → Upload files**. Drop the three Excel files:
-   * the dump (sheets `SALES_ORDER`, `PRIMARY_SALES_COLLECTION`, `DELIVERY_ORDER`)
-   * the product master (sheet `SKU_MASTER`)
-   * the customer master (sheets `Adhesive`, `Corporate`, `Thinner`)
-2. Press **Commit changes**.
-3. GitHub builds a new `data.json` and republishes the dashboard in about 2–3 minutes. Watch it in the **Actions** tab (green tick = done).
+## Part 3 - GitHub
 
-Rules:
-* Keep the **same file names** every time, so the new upload replaces the old file. The script finds the data by sheet name, so the file name itself can be anything, but two dump files with different names in the repository would confuse it.
-* You can upload only the file that changed (for example only the dump).
-* GitHub's website refuses files over 25 MB. The dump is already about 24 MB; when it grows past the limit, use section D instead (or GitHub Desktop).
-* In a public repository the uploaded Excel files can be downloaded by anyone, with every order line, price and customer.
+1. Upload `index.html` and `config.json` (**Add file → Upload files → Commit changes**).
+2. Replace `.github/workflows/update-dashboard.yml` with the new one (open it → pencil → paste → commit).
+3. Open `config.json` → pencil → paste the Web app URL between the quotes → commit:
+   `{ "api": "https://script.google.com/macros/s/XXXX/exec" }`
+4. **Settings → Pages → Source: GitHub Actions**.
+5. Delete the files that are no longer needed: `data.json`, `sheets.txt`, `build_data.py`, `update_data.bat` and any `.xlsx` (open the file → ⋯ → Delete file).
+6. Open the dashboard link. The sign-in screen appears.
 
-## D. Manual update (data stays on your computer)
+**Old data in the repository history.** Deleted files can still be found in a repository's history. If `data.json` or the Excel files were ever uploaded to a public repository, the clean way is to create a **new repository**, upload only the files from the table above, and delete the old repository (Settings → General → Delete this repository).
 
-One-time: install Python 3 from https://www.python.org/downloads/ (tick **Add python.exe to PATH**), then run `pip install pandas openpyxl` in Command Prompt.
+## Updating the numbers
 
-1. Put the three Excel files in the same folder as `build_data.py` and `update_data.bat`.
-2. Double-click `update_data.bat`. After about 40 seconds a new `data.json` appears.
-3. On GitHub: **Add file → Upload files** → drop `data.json` → **Commit changes**.
+1. Open the dump Google Sheet → **File → Import → Upload** → new dump file → **Replace spreadsheet**.
+2. Admin Sheet → **Dashboard → Update data now**.
+3. On the dashboard: **Update data → Reload data**.
+
+To make step 2 automatic: **Dashboard → Turn on hourly auto-update** (it rebuilds only when a source Sheet has changed).
+
+## Users
+
+* Add, change or remove people in the **Users** tab. Put `No` in **Active** to block someone.
+* A sign-in lasts 7 days with "Keep me signed in", otherwise 12 hours.
+* After 5 wrong passwords the user name is locked for 10 minutes.
+* **Dashboard → Sign everyone out** closes all sessions at once.
+* Passwords are stored as plain text in the Users tab, so share the Admin Sheet with nobody who should not see them, and do not reuse important passwords here.
 
 ## Notes
 
-* The page must be opened from the GitHub Pages link. Opened as a file from your computer it cannot read `data.json`.
-* Order, Delivery and Collection use the workbook's rules (Total Amount / Delivery Amount / Collection Amount, top 80%, rubber adhesive keyword). With no filter they match the Excel dashboard.
-* Growth is like-for-like: only months with data in both years are compared. Delivery growth shows n/a until 2025 delivery rows are added.
-* Product Category does not apply to collection (collection is booked per customer). Year and Month do not change Pending delivery (it is a snapshot of open orders).
-* The workbook has no budget or target figures, so there is no achievement %.
-* `data.json` contains distributor names and monthly sales totals per distributor and product. Anyone who has the page link can read it, whether the repository is public or private. Share the link only with people who may see these numbers.
+* Import the `.xlsx` file; do not copy-paste rows. Pasting can turn product codes such as `08-002` into dates.
+* A Google Sheet holds at most 10 million cells; the dump uses about 5.5 million now. When it gets close, delete unused columns before importing (Approved By, Created By, Creation Date, Zone and Base columns).
+* If `config.json` has no link, the page falls back to reading a public `data.json` without sign-in.
+* Growth is like-for-like: only months with data in both years are compared. There are no budget or target figures in the data, so there is no achievement %.

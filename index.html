@@ -209,6 +209,56 @@ kbd{font:600 10px var(--f-body);color:var(--mut);border:1px solid var(--line);bo
 .ic p{margin:0;font-size:13px;line-height:1.55;color:#EDE6E1}
 .foot{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:space-between;font-size:11px;color:var(--faint);padding:2px 10px 0}
 
+/* ---------- sign-in screen ---------- */
+body.locked .app{visibility:hidden}
+.lgn{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:20px;overflow:auto;
+  background:radial-gradient(900px 600px at 78% 12%,rgba(255,107,61,.34),transparent 62%),radial-gradient(700px 520px at 12% 88%,rgba(138,92,246,.26),transparent 60%),linear-gradient(160deg,#241A26,#150F17 70%)}
+.lgn[hidden]{display:none}
+.lgc{width:min(380px,100%);padding:26px 26px 22px;border-radius:30px;display:flex;flex-direction:column;align-items:stretch;gap:12px;
+  background:linear-gradient(180deg,rgba(60,48,62,.72),rgba(30,24,33,.78));border:1px solid rgba(255,255,255,.14);box-shadow:0 30px 80px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.14);
+  -webkit-backdrop-filter:blur(26px) saturate(1.3);backdrop-filter:blur(26px) saturate(1.3);color:#F7F2EE}
+.lgc.shake{animation:lgshake .45s}
+@keyframes lgshake{20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+.msc{width:132px;height:132px;display:block;margin:0 auto 2px;--fx:0;--fy:0;filter:drop-shadow(0 12px 26px rgba(255,107,61,.35))}
+.msc #mFace{transform:translate(calc(var(--fx)*1px),calc(var(--fy)*1px));transition:transform .18s ease-out}
+.msc #mPup{transform:translate(calc(var(--fx)*.55px),calc(var(--fy)*.5px));transition:transform .14s ease-out}
+.msc #mBody{transform:rotate(calc(var(--fx)*.35deg));transform-origin:100px 190px;transition:transform .25s ease-out}
+.msc .eye{transform-box:fill-box;transform-origin:center;animation:mblink 5.2s infinite}
+@keyframes mblink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.08)}}
+.msc .arm{transform:translateY(118px);transition:transform .5s cubic-bezier(.34,1.4,.64,1)}
+.msc #mArmR{transition-delay:.05s}
+.msc.cover .arm{transform:translateY(0)}
+.msc.cover.peek #mArmL{transform:translate(-5px,19px) rotate(-7deg);transform-origin:70px 130px}
+.msc.cover.peek #mArmR{transform:translate(5px,19px) rotate(7deg);transform-origin:130px 130px}
+.msc #mMouth{transition:d .2s}
+.lgc h1{margin:4px 0 0;text-align:center;font:600 21px/1.2 var(--f-display);letter-spacing:-.01em}
+.lgc .lsub{margin:0 0 4px;text-align:center;font-size:12.5px;color:#BDB2AD}
+.lgf{display:flex;flex-direction:column;gap:5px}
+.lgf label{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#A89C98;padding-left:3px}
+.lgi{position:relative}
+.lgi input{width:100%;height:46px;padding:0 14px;border-radius:14px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#fff;font:500 14.5px var(--f-body)}
+.lgi input:focus{outline:0;border-color:rgba(255,130,90,.9);box-shadow:0 0 0 4px rgba(255,107,61,.22);background:rgba(255,255,255,.1)}
+.lgi input.pw{padding-right:48px}
+.lgi button{position:absolute;right:5px;top:5px;width:36px;height:36px;border:0;border-radius:11px;background:none;color:#BDB2AD;cursor:pointer;display:grid;place-items:center}
+.lgi button:hover{background:rgba(255,255,255,.1);color:#fff}
+.lgi button svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lgk{display:flex;align-items:center;gap:9px;font-size:12.5px;color:#D9CFCA;cursor:pointer;padding:2px 3px}
+.lgk input{width:16px;height:16px;accent-color:#FF6B3D}
+.lgb{height:48px;border:0;border-radius:15px;margin-top:2px;color:#fff;font:600 14.5px var(--f-body);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
+  background:linear-gradient(180deg,#FF8F63,#FF5A2B 55%,#E5481C);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 10px 26px rgba(255,107,61,.45);transition:transform .15s,filter .2s}
+.lgb:hover{transform:translateY(-1px)} .lgb:active{transform:translateY(1px)} .lgb:disabled{filter:saturate(.6) brightness(.85);cursor:default;transform:none}
+.lgb .sp,.lgw .sp{width:17px;height:17px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:lgspin .8s linear infinite}
+@keyframes lgspin{to{transform:rotate(360deg)}}
+.lgm{min-height:18px;text-align:center;font-size:12.5px;color:#FF9C8C}
+.lgm.ok{color:#5BE3A8}
+.lgw{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 0 10px;font-size:13.5px;color:#D9CFCA}
+.lgc.busy form{display:none} .lgc:not(.busy) .lgw{display:none}
+.lgt{text-align:center;font-size:10.5px;color:#8F8380;letter-spacing:.04em}
+.sob{margin-top:8px;width:100%;height:34px;border-radius:11px;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--mut);font:600 12px var(--f-body);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.sob:hover{background:rgba(255,255,255,.11);color:var(--ink)}
+.sob svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+@media (prefers-reduced-motion:reduce){.msc .eye,.lgc.shake{animation:none}.msc .arm,.msc #mFace,.msc #mPup,.msc #mBody{transition:none}}
+
 /* ---------- filter bar ---------- */
 .fbar{position:relative;z-index:5;display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 12px;border-radius:24px;padding:12px 16px}
 .fl{display:flex;flex-direction:column;gap:4px;flex:1 1 118px;min-width:104px}
@@ -437,6 +487,49 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 
 <div class="ov" id="ovUpd" role="dialog" aria-modal="true" aria-labelledby="updT"><div class="dlg glass" id="dlg"></div></div>
 <div class="ov" id="ovPal" role="dialog" aria-modal="true" aria-label="Jump to"><div class="pal glass"><input id="palq" type="text" placeholder="Jump to a view…" autocomplete="off" spellcheck="false"><ul id="pall"></ul></div></div>
+<div class="lgn" id="login" hidden>
+  <div class="lgc" id="lgc">
+    <svg class="msc" id="msc" viewBox="0 0 200 200" aria-hidden="true">
+      <defs>
+        <clipPath id="mclip"><circle cx="100" cy="100" r="96"/></clipPath>
+        <linearGradient id="mbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A3550"/><stop offset="1" stop-color="#2A1F30"/></linearGradient>
+        <linearGradient id="mbd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFC08A"/><stop offset=".55" stop-color="#FF8A4F"/><stop offset="1" stop-color="#F0561F"/></linearGradient>
+        <linearGradient id="mhd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFB27C"/><stop offset="1" stop-color="#F26A2E"/></linearGradient>
+      </defs>
+      <circle cx="100" cy="100" r="96" fill="url(#mbg)"/>
+      <g clip-path="url(#mclip)">
+        <g id="mBody">
+          <path d="M100 24C100 24 42 92 42 134a58 58 0 0 0 116 0C158 92 100 24 100 24Z" fill="url(#mbd)"/>
+          <path d="M92 52C80 68 62 96 58 118" fill="none" stroke="#FFE3C8" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+          <g id="mFace">
+            <circle cx="66" cy="146" r="8" fill="#FF5C7A" opacity=".35"/><circle cx="134" cy="146" r="8" fill="#FF5C7A" opacity=".35"/>
+            <g class="eye"><ellipse cx="80" cy="128" rx="14" ry="16" fill="#fff"/><ellipse cx="120" cy="128" rx="14" ry="16" fill="#fff"/>
+              <g id="mPup"><circle cx="80" cy="129" r="7" fill="#2A1A22"/><circle cx="120" cy="129" r="7" fill="#2A1A22"/><circle cx="82.5" cy="126" r="2.2" fill="#fff"/><circle cx="122.5" cy="126" r="2.2" fill="#fff"/></g>
+            </g>
+            <path id="mBrL" d="M68 107q11-7 22-2" fill="none" stroke="#B8401A" stroke-width="3.2" stroke-linecap="round"/>
+            <path id="mBrR" d="M110 105q11-5 22 2" fill="none" stroke="#B8401A" stroke-width="3.2" stroke-linecap="round"/>
+            <path id="mMouth" d="M88 152Q100 163 112 152" fill="none" stroke="#7A2A12" stroke-width="3.6" stroke-linecap="round"/>
+          </g>
+        </g>
+        <g class="arm" id="mArmL"><path d="M34 214C36 180 52 150 76 132" fill="none" stroke="url(#mhd)" stroke-width="22" stroke-linecap="round"/><ellipse cx="79" cy="128" rx="20" ry="18" fill="url(#mhd)" stroke="#D9521F" stroke-width="1.5"/><path d="M71 116v9M79 114v10M87 116v9" stroke="#D9521F" stroke-width="2" stroke-linecap="round"/></g>
+        <g class="arm" id="mArmR"><path d="M166 214C164 180 148 150 124 132" fill="none" stroke="url(#mhd)" stroke-width="22" stroke-linecap="round"/><ellipse cx="121" cy="128" rx="20" ry="18" fill="url(#mhd)" stroke="#D9521F" stroke-width="1.5"/><path d="M113 116v9M121 114v10M129 116v9" stroke="#D9521F" stroke-width="2" stroke-linecap="round"/></g>
+      </g>
+      <circle cx="100" cy="100" r="95" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="2"/>
+    </svg>
+    <h1>Samuda Growth Hub</h1>
+    <p class="lsub" id="lgsub">Sign in to open the dashboard</p>
+    <div class="lgw"><span class="sp"></span><span id="lgwt">Opening the dashboard…</span></div>
+    <form id="lgform" autocomplete="on" novalidate>
+      <div class="lgf"><label for="lgu">User name</label><div class="lgi"><input id="lgu" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required></div></div>
+      <div class="lgf" style="margin-top:10px"><label for="lgp">Password</label><div class="lgi"><input class="pw" id="lgp" name="password" type="password" autocomplete="current-password" required>
+        <button type="button" id="lgeye" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+      <label class="lgk" style="margin-top:10px"><input id="lgkeep" type="checkbox" checked> Keep me signed in on this device</label>
+      <button class="lgb" id="lgb" type="submit" style="width:100%;margin-top:12px"><span id="lgbt">Sign in</span></button>
+      <div class="lgm" id="lgm" role="alert" aria-live="assertive" style="margin-top:10px"></div>
+    </form>
+    <div class="lgt">SAMUDA SPEC-CHEM LIMITED · Build · Bond · Better</div>
+  </div>
+</div>
 
 <script>
 (function(){
@@ -444,6 +537,11 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
 var DATA_URL = 'data.json';
+/* Sign-in mode: put the Apps Script web-app link in config.json  {"api":"https://script.google.com/macros/s/.../exec"}
+   (or here). With a link the page asks for a user name and password and reads the data from Google.
+   Without one it reads the public data.json next to this page. */
+var API_URL = '';
+var API = '', AUTH = false, TOKEN = null, USER = '';
 var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 var $ = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
@@ -981,7 +1079,8 @@ function renderView(key){
     '<section class="ins">' + D.ins.map(function(c, i){ return '<article class="glass card lift ic" data-rise style="--kc:' + KC[i] + '"><div class="k"><i></i>' + esc(c.k) + '</div><p>' + esc(c.t) + '</p></article>'; }).join('') + '</section>' +
     footHTML();
 }
-function srcLabel(){ return SRC.kind === 'github' ? 'GitHub data.json, built ' + SRC.at : 'no data loaded'; }
+function srcLabel(){ return SRC.kind === 'sheet' ? 'Google Sheets, built ' + SRC.at : (SRC.kind === 'github' ? 'GitHub data.json, built ' + SRC.at : 'no data loaded'); }
+function initials(n){ var p = String(n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || 'S').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : (p[0] || 'SC').charAt(1) || '')).toUpperCase(); }
 function footHTML(){
   return '<footer class="foot" data-rise><span>SAMUDA SPEC-CHEM LIMITED  |  Adhesive  |  Thinner  |  DOP  |  Build · Bond · Better</span><span>Figures come from the Excel workbook (' + esc(srcLabel()) + ')</span></footer>';
 }
@@ -991,7 +1090,7 @@ function headHTML(D){
     '<button class="search" id="srch" type="button" aria-label="Jump to"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Jump to…</span><kbd>Ctrl K</kbd></button>' +
     '<button class="ib" id="thm" type="button" aria-label="Switch light or dark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg></button>' +
     '<button class="cta" id="cta" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.7-6"/><path d="M20.5 4v4.8h-4.8"/></svg><span>Update data</span></button>' +
-    '<span class="av" title="Samuda Spec-Chem Limited">SC</span></header>' + filterHTML();
+    '<span class="av" title="' + esc(AUTH && USER ? USER : 'Samuda Spec-Chem Limited') + '">' + esc(AUTH && USER ? initials(USER) : 'SC') + '</span></header>' + filterHTML();
 }
 
 
@@ -1285,18 +1384,30 @@ function drawGroup(cfg){
 function drawExt(){ EXTCH.forEach(drawGroup); }
 
 function ghText(){
+  if (AUTH) {
+    if (GHSTATE === 'ok') return '<span class="src-ok">● Data loaded from Google Sheets (built ' + esc(SRC.at) + ').</span>';
+    if (GHSTATE === 'loading') return 'Reading the data…';
+    if (GHSTATE === 'nodata') return '<span class="src-warn">● No data has been built yet. In the Admin Google Sheet use Dashboard → Update data now.</span>';
+    return '<span class="src-warn">● Could not reach the data service. Check the internet connection and try again.</span>';
+  }
   if (GHSTATE === 'ok') return '<span class="src-ok">● Loaded data.json from GitHub (built ' + esc(SRC.at) + ').</span>';
   if (GHSTATE === 'loading') return 'Reading data.json…';
   return '<span class="src-warn">● Could not read ' + esc(DATA_URL) + '. It must be uploaded next to index.html in the GitHub repository, and the page must be opened from its GitHub Pages link (not as a file on the computer).</span>';
 }
 function renderDlg(){
-  return '<button class="ib x" id="dx" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
-    '<h2 id="updT">Update the numbers</h2><p class="sub">Every view reads <b>data.json</b>, stored in GitHub next to this page</p>' +
+  var x = '<button class="ib x" id="dx" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>';
+  if (AUTH) return x + '<h2 id="updT">Update the numbers</h2><p class="sub">The data is built from your Google Sheets by the Admin Sheet</p>' +
     '<div class="srcl" id="ghs">' + ghText() + '</div><ol>' +
-    '<li>Refresh the Excel workbook (paste the new dump or Data → Refresh All) and <b>save</b> it.</li>' +
-    '<li>Double-click <b>update_data.bat</b> (it runs build_data.py). It writes a new <b>data.json</b>.</li>' +
-    '<li>On GitHub: <b>Add file → Upload files</b>, drop <b>data.json</b>, press <b>Commit changes</b>.</li>' +
-    '<li>Wait a minute, then press <b>Reload from GitHub</b> here.</li></ol>' +
+    '<li>Put the new dump into its Google Sheet: <b>File → Import → Upload</b>, choose the dump file, <b>Replace spreadsheet</b>.</li>' +
+    '<li>Open the <b>Dashboard Admin</b> Google Sheet and choose <b>Dashboard → Update data now</b> (1–3 minutes). With hourly auto-update on, this happens by itself.</li>' +
+    '<li>Press <b>Reload data</b> here.</li></ol>' +
+    '<div class="msg" id="msg" role="status" aria-live="polite"></div>' +
+    '<div class="btns"><button class="btn" id="reload" type="button">Reload data</button></div>';
+  return x + '<h2 id="updT">Update the numbers</h2><p class="sub">GitHub builds <b>data.json</b> from the Google Sheet; every view reads that file</p>' +
+    '<div class="srcl" id="ghs">' + ghText() + '</div><ol>' +
+    '<li>Put the new dump into the Google Sheet: <b>File → Import → Upload</b>, choose the dump file, <b>Replace spreadsheet</b>.</li>' +
+    '<li>GitHub reads the Sheet every hour. To update now: GitHub → <b>Actions → Update dashboard → Run workflow</b>.</li>' +
+    '<li>After the green tick (about 3 minutes), press <b>Reload from GitHub</b> here.</li></ol>' +
     '<div class="msg" id="msg" role="status" aria-live="polite"></div>' +
     '<div class="btns"><button class="btn" id="reload" type="button">Reload from GitHub</button></div>';
 }
@@ -1396,7 +1507,7 @@ function enter(){
 /* ---------- routing ---------- */
 var current = null, want = null, busy = false;
 function updateChrome(key){
-  if (!DATA) { $$('i[data-g]', menu).forEach(function(i){ i.className = ''; i.textContent = ''; }); $('#srcnote').innerHTML = ''; return; }
+  if (!DATA) { $$('i[data-g]', menu).forEach(function(i){ i.className = ''; i.textContent = ''; }); $('#srcnote').innerHTML = AUTH && TOKEN ? signOutBtn() : ''; wireSignOut(); return; }
   $$('i[data-g]', menu).forEach(function(i){
     var k = i.dataset.g, g;
     if (k === 'pending') { var P = DATA.ext.pending; i.className = 'na'; i.textContent = FMT.cr(P.tot, P.tot); return; }
@@ -1405,8 +1516,12 @@ function updateChrome(key){
   });
   var arr = VIEWS.indexOf(key) > -1 ? DATA.views[key].mon.cy : DATA.ext.overview.mon.order, months = arr.filter(function(v){ return v != null; }).length, p = Math.round(months / 12 * 100);
   $('#srcnote').innerHTML = '<div class="pace"><div class="r1"><span>Year covered</span><b>' + p + '%</b></div><div class="bar"><i style="width:' + p + '%"></i></div>' + months + ' of 12 months reported</div>' +
-    '<div class="who"><span class="av">SC</span><div><b>GitHub data.json</b><small>' + esc(SRC.at) + '</small></div></div>';
+    (AUTH ? '<div class="who"><span class="av">' + esc(initials(USER)) + '</span><div><b>' + esc(USER || 'Signed in') + '</b><small>Data built ' + esc(SRC.at) + '</small></div></div>' + signOutBtn()
+          : '<div class="who"><span class="av">SC</span><div><b>GitHub data.json</b><small>' + esc(SRC.at) + '</small></div></div>');
+  wireSignOut();
 }
+function signOutBtn(){ return '<button class="sob" id="sob" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10"/></svg>Sign out</button>'; }
+function wireSignOut(){ var b = $('#sob'); if (b) b.addEventListener('click', signOut); }
 var ovU = $('#ovUpd'), dlg = $('#dlg'), ovP = $('#ovPal'), palq = $('#palq'), pall = $('#pall');
 function wireView(){
   var q = function(s, f){ var e = $(s, stage); if (e) e.addEventListener('click', f); };
@@ -1422,6 +1537,10 @@ function wireView(){
 }
 function emptyHTML(){
   var load = GHSTATE === 'loading';
+  if (AUTH) return headHTML({title:'Samuda Growth Hub', sub:load ? 'LOADING DATA' : 'NO DATA', cmp:load ? 'Reading the data…' : ''}) +
+    (load ? '<div class="banner note" data-rise>Reading the data…</div>' :
+     GHSTATE === 'nodata' ? '<div class="banner warn" data-rise>⚠  No dashboard data has been built yet. In the Dashboard Admin Google Sheet choose Dashboard → Update data now, then press Update data → Reload data here.</div>' :
+     '<div class="banner warn" data-rise>⚠  Could not reach the data service. Check the internet connection, then press Update data → Reload data.</div>');
   return headHTML({title:'Samuda Growth Hub', sub:load ? 'LOADING DATA' : 'NO DATA', cmp:load ? 'Reading data.json…' : 'data.json was not found'}) +
     (load ? '<div class="banner note" data-rise>Reading data.json…</div>' :
     '<div class="banner warn" data-rise>⚠  Could not read data.json. Upload data.json to the same GitHub repository as index.html and open the page from its GitHub Pages link. Press Update data for the steps.</div>');
@@ -1463,30 +1582,139 @@ function show(key){
   })();
 }
 var fresh = true;
-/* read data.json from GitHub (same folder as this page, or DATA_URL) */
-function loadGitHub(){
+/* ---------- loading the data: public data.json, or the Apps Script service after sign-in ---------- */
+function adopt(j, kind){ RAW = j; IX = prep(j); if (F.year == null) F.year = IX.defYear; DATA = compute(); SRC = {kind:kind, at:j.built}; GHSTATE = 'ok'; }
+function afterLoad(ok){
+  if (current && ALL.indexOf(current) > -1) { render(current); enter(); }
+  var g = $('#ghs'); if (g) g.innerHTML = ghText();
+  return ok;
+}
+function loadFile(){
   GHSTATE = 'loading';
   var sep = DATA_URL.indexOf('?') > -1 ? '&' : '?', req;
   try { req = fetch(DATA_URL + sep + 't=' + Date.now(), {cache:'no-store'}); } catch(e){ req = Promise.reject(e); }
   return req.then(function(r){ if (!r.ok) throw new Error('http ' + r.status); return r.json(); }).then(function(j){
     if (!validRaw(j)) throw new Error('shape');
-    RAW = j; IX = prep(j); if (F.year == null) F.year = IX.defYear;
-    DATA = compute(); SRC = {kind:'github', at:j.built}; GHSTATE = 'ok';
-    return true;
-  }).catch(function(){ GHSTATE = 'fail'; return false; }).then(function(ok){
-    if (current && ALL.indexOf(current) > -1) { render(current); enter(); }
-    var g = $('#ghs'); if (g) g.innerHTML = ghText();
-    return ok;
+    adopt(j, 'github'); return true;
+  }).catch(function(){ GHSTATE = 'fail'; return false; }).then(afterLoad);
+}
+var TK = 'samuda-growth-hub-session';
+function getTok(){ try { return localStorage.getItem(TK) || sessionStorage.getItem(TK); } catch(e){ return null; } }
+function setTok(t, keep){ try { (keep ? localStorage : sessionStorage).setItem(TK, t); (keep ? sessionStorage : localStorage).removeItem(TK); } catch(e){} }
+function clearTok(){ try { localStorage.removeItem(TK); sessionStorage.removeItem(TK); } catch(e){} TOKEN = null; }
+/* text/plain keeps this a "simple" request, which Apps Script web apps accept from other sites */
+function api(payload){
+  return fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload), redirect:'follow'}).then(function(r){ return r.json(); });
+}
+function takeApi(j){
+  if (j && j.name) USER = j.name;
+  if (j && j.ok && validRaw(j.data)) { adopt(j.data, 'sheet'); return 'ok'; }
+  if (j && j.error === 'nodata') { GHSTATE = 'nodata'; return 'nodata'; }
+  if (j && j.error === 'auth') return 'auth';
+  GHSTATE = 'fail'; return 'fail';
+}
+function loadApi(){
+  GHSTATE = 'loading';
+  return api({action:'data', token:TOKEN}).then(takeApi, function(){ GHSTATE = 'fail'; return 'fail'; }).then(function(st){
+    if (st === 'auth') { lockOut('Your session has ended. Please sign in again.'); return false; }
+    return afterLoad(st === 'ok');
+  });
+}
+function loadGitHub(){ return AUTH ? loadApi() : loadFile(); }
+
+/* ---------- sign-in screen ---------- */
+var lg = {ov:$('#login'), card:$('#lgc'), form:$('#lgform'), u:$('#lgu'), p:$('#lgp'), eye:$('#lgeye'), keep:$('#lgkeep'), btn:$('#lgb'), bt:$('#lgbt'), msg:$('#lgm'), msc:$('#msc'), mouth:$('#mMouth'), wt:$('#lgwt')};
+var MOUTH = {smile:'M88 152Q100 163 112 152', flat:'M91 154Q100 157 109 154', sad:'M88 158Q100 148 112 158', joy:'M86 150Q100 170 114 150'};
+function mLook(x, y){ lg.msc.style.setProperty('--fx', x.toFixed(1)); lg.msc.style.setProperty('--fy', y.toFixed(1)); }
+function mMouth(k){ lg.mouth.setAttribute('d', MOUTH[k]); }
+var mctx = null;
+function caretFrac(inp){
+  try {
+    if (!mctx) mctx = document.createElement('canvas').getContext('2d');
+    var cs = getComputedStyle(inp); mctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    var pos = inp.selectionStart == null ? inp.value.length : inp.selectionStart;
+    var w = mctx.measureText(inp.value.slice(0, pos)).width, room = inp.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    return Math.max(0, Math.min(1, w / Math.max(1, room)));
+  } catch(e){ return .5; }
+}
+function mFollow(){ if (document.activeElement === lg.u) { mLook((caretFrac(lg.u) - .5) * 18, 8); mMouth(lg.u.value ? 'smile' : 'flat'); } }
+function mPass(){
+  var show = lg.p.type === 'text';
+  lg.msc.classList.add('cover'); lg.msc.classList.toggle('peek', show); mLook(0, show ? 7 : 2); mMouth('flat');
+}
+function mRest(){ lg.msc.classList.remove('cover', 'peek'); mLook(0, 0); mMouth('smile'); }
+['focus', 'input', 'keyup', 'click'].forEach(function(ev){ lg.u.addEventListener(ev, function(){ lg.msc.classList.remove('cover', 'peek'); mFollow(); }); });
+lg.u.addEventListener('blur', function(){ if (document.activeElement !== lg.p) mRest(); });
+lg.p.addEventListener('focus', mPass);
+lg.p.addEventListener('blur', function(){ setTimeout(function(){ if (document.activeElement !== lg.p && document.activeElement !== lg.eye) mRest(); }, 0); });
+lg.eye.addEventListener('click', function(){
+  var show = lg.p.type === 'password'; lg.p.type = show ? 'text' : 'password';
+  lg.eye.setAttribute('aria-pressed', show); lg.eye.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); lg.p.focus(); mPass();
+});
+document.addEventListener('pointermove', function(e){       // nothing focused: the eyes follow the pointer
+  if (lg.ov.hidden || lg.msc.classList.contains('cover') || document.activeElement === lg.u) return;
+  var r = lg.msc.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2), d = Math.sqrt(dx * dx + dy * dy) || 1, k = Math.min(1, d / 220);
+  mLook(dx / d * 8 * k, dy / d * 7 * k);
+}, {passive:true});
+function lgSay(t, ok){ lg.msg.textContent = t || ''; lg.msg.className = 'lgm' + (ok ? ' ok' : ''); }
+function lgBusy(on, text){ lg.btn.disabled = on; lg.btn.innerHTML = on ? '<span class="sp"></span><span>' + esc(text || 'Signing in…') + '</span>' : '<span id="lgbt">Sign in</span>'; }
+function showLogin(message, checking){
+  document.body.classList.add('locked'); lg.ov.hidden = false;
+  lg.card.classList.toggle('busy', !!checking); lgBusy(false); lgSay(message || '');
+  lg.p.value = ''; lg.p.type = 'password'; lg.eye.setAttribute('aria-pressed', 'false'); mRest();
+  if (!checking) setTimeout(function(){ try { (lg.u.value ? lg.p : lg.u).focus(); } catch(e){} }, 60);
+}
+function hideLogin(){ lg.ov.hidden = true; document.body.classList.remove('locked'); lg.card.classList.remove('busy'); }
+function lockOut(message){
+  clearTok(); DATA = null; RAW = null; IX = null; USER = ''; SRC = {kind:'none', at:''}; GHSTATE = 'loading';
+  closeUpd(true); closePal(); closeNav();
+  if (current && ALL.indexOf(current) > -1) render(current);
+  showLogin(message);
+}
+function signOut(){ var t = TOKEN; if (t) { try { api({action:'logout', token:t}).catch(function(){}); } catch(e){} } lockOut('You have signed out.'); lgSay('You have signed out.', true); }
+lg.form.addEventListener('submit', function(e){
+  e.preventDefault();
+  var u = lg.u.value.trim(), p = lg.p.value, keep = lg.keep.checked;
+  if (!u || !p) { lgSay('Enter your user name and password.'); mMouth('sad'); (u ? lg.p : lg.u).focus(); return; }
+  lgBusy(true); lgSay(''); lg.p.blur(); lg.msc.classList.add('cover'); lg.msc.classList.remove('peek');
+  api({action:'login', user:u, pass:p, keep:keep}).then(function(j){
+    if (j && j.token) { TOKEN = j.token; setTok(TOKEN, keep); }
+    var st = takeApi(j);
+    if (st === 'ok' || st === 'nodata') {
+      lg.msc.classList.remove('cover', 'peek'); mLook(0, -3); mMouth('joy'); lgBusy(true, 'Welcome' + (USER ? ', ' + USER.split(' ')[0] : '') + '!');
+      setTimeout(function(){ hideLogin(); afterLoad(st === 'ok'); window.scrollTo(0, 0); }, reduce ? 0 : 650);
+      return;
+    }
+    GHSTATE = 'loading'; lgBusy(false); mRest(); mMouth('sad'); mLook(0, 5);
+    lgSay((j && j.message) || 'Could not sign in. Try again.');
+    lg.card.classList.remove('shake'); void lg.card.offsetWidth; lg.card.classList.add('shake');
+    lg.p.value = ''; lg.p.focus();
+  }, function(){
+    GHSTATE = 'loading'; lgBusy(false); mRest(); mMouth('sad');
+    lgSay('Could not reach the sign-in service. Check your internet connection and try again.');
+  });
+});
+function boot(){
+  var cfg;
+  try { cfg = fetch('config.json?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : {}; }).catch(function(){ return {}; }); } catch(e){ cfg = Promise.resolve({}); }
+  cfg.then(function(c){
+    API = String((c && c.api) || API_URL || '').trim();
+    AUTH = /^https:\/\/script\.google(usercontent)?\.com\//.test(API);
+    if (!AUTH) { loadFile(); return; }
+    TOKEN = getTok();
+    if (!TOKEN) { showLogin(); return; }
+    showLogin('', true);                                   // returning user: check the saved session
+    loadApi().then(function(){ if (TOKEN) hideLogin(); });
   });
 }
 function wireUpdate(){
   var msg = $('#msg');
   function say(t, ok){ msg.textContent = t; msg.className = 'msg ' + (ok ? 'ok' : 'err'); }
   $('#reload').addEventListener('click', function(){
-    var b = this; b.disabled = true; say('Reading data.json…', true);
+    var b = this; b.disabled = true; say(AUTH ? 'Reading the data…' : 'Reading data.json…', true);
     loadGitHub().then(function(ok){
       b.disabled = false;
-      say(ok ? 'Loaded data.json built ' + SRC.at + '.' : 'Could not read data.json. Check that it is uploaded next to index.html.', ok);
+      say(ok ? 'Loaded data built ' + SRC.at + '.' : (AUTH ? (GHSTATE === 'nodata' ? 'No data has been built yet.' : 'Could not read the data. Try again.') : 'Could not read data.json. Check that it is uploaded next to index.html.'), ok);
     });
   });
 }
@@ -1552,7 +1780,7 @@ document.addEventListener('pointermove', function(e){
 }, {passive:true});
 
 show((location.hash || '').slice(1) || 'overview');
-loadGitHub();
+boot();
 })();
 </script>
 </body>
