@@ -915,7 +915,7 @@ function extViews(M){
     cmp:'Growth compared like-for-like with ' + (Y - 1) + '  ·  Value in Crore (1 Cr = 10,000,000 BDT)', info:'Data up to ' + asof, period:P,
     kpis:[kt('ORDER VALUE', O, pO), kt('DELIVERY VALUE', D, pD), kt('COLLECTION', C, pC), kt('SALES VOLUME (ORDER)', OT, pO, 'TON')],
     ratio:{coll:oc && !M.sOn ? r4(cc / oc) : null, del:oc ? r4(dc / oc) : null},
-    mon:{order:mon(O, pO), delivery:mon(D, pO), collection:mon(C, pO), orderPY:pmon(O, 'O'), collectionPY:pmon(C, 'C')},
+    mon:{order:mon(O, pO), delivery:mon(D, pO), collection:mon(C, pO), orderPY:pmon(O, 'O'), deliveryPY:pmon(D, 'D'), collectionPY:pmon(C, 'C')},
     ton:{order:mon(OT, pO), delivery:mon(DT, pO)}, dton:Math.round(DT.cy[0] * 10) / 10, hl:hl,
     foot:'Order = Total Amount (SALES_ORDER), Delivery = Delivery Amount (DELIVERY_ORDER), Collection = Collection Amount (PRIMARY_SALES_COLLECTION). Volume = quantity × TON_COV_FACTOR from SKU_MASTER (free products excluded). ' +
       (F.month === 'auto' ? 'Period ' + P + (F.span === 'mtd' ? ' = the latest month' : ' runs to the latest month') + ' in the data. ' : '') + 'Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
@@ -1373,7 +1373,10 @@ function renderExt(key){
       return '<div class="rg" style="--c:' + c + '"><div class="ringw"><svg viewBox="0 0 80 80" aria-hidden="true"><g transform="rotate(-90 40 40)"><circle class="tr" cx="40" cy="40" r="34" stroke-width="7"/>' +
         '<circle class="ra" cx="40" cy="40" r="34" stroke-width="7" stroke="' + c + '" pathLength="100" stroke-dasharray="' + p.toFixed(2) + ' 100" data-to="' + p.toFixed(2) + '"/></g></svg>' +
         '<div class="rc up">' + (v == null ? 'n/a' : num(v, 'pc0')) + '</div></div><b>' + esc(t) + '</b><small>' + esc(s) + '</small></div>'; };
-    EXTCH.push({id:'cOv', series:[{n:'Order', c:'var(--c1)', v:E.mon.order}, {n:'Delivery', c:'var(--c2)', v:E.mon.delivery}, {n:'Collection', c:'var(--c4)', v:E.mon.collection}, {n:'Collection ' + (DATA.views.collection.pyear || ''), c:'var(--c7)', v:E.mon.collectionPY, line:true}], unit:'Cr'});
+    var PYR = F.year - 1;
+    EXTCH.push({id:'cOv', series:[{n:'Order', c:'var(--c1)', v:E.mon.order}, {n:'Delivery', c:'var(--c2)', v:E.mon.delivery}, {n:'Collection', c:'var(--c4)', v:E.mon.collection},
+      {n:'Order ' + PYR, c:'var(--c1)', v:E.mon.orderPY, line:true}, {n:'Delivery ' + PYR, c:'var(--c2)', v:E.mon.deliveryPY, line:true}, {n:'Collection ' + PYR, c:'var(--c4)', v:E.mon.collectionPY, line:true}]
+      .filter(function(se){ return se.v && se.v.some(function(v){ return v != null; }); }), unit:'Cr'});
     EXTCH.push({id:'cTon', series:[{n:'Order TON', c:'var(--c3)', v:E.ton.order}, {n:'Delivery TON', c:'var(--c5)', v:E.ton.delivery, line:true}], unit:'TON'});
     return h + stripHTML(E, key, '<div class="k"><small>Growth basis</small><b>Like-for-like months</b></div>') +
       '<section class="tiles four">' + E.kpis.map(function(t, i){
@@ -1382,7 +1385,7 @@ function renderExt(key){
         return h.replace('<article class="glass card lift tile', '<article role="link" tabindex="0" data-go="' + go + '" aria-label="Open ' + META[go].label + ' page" class="glass card lift tile go')
           .replace(/<\/article>$/, '<span class="golink">' + META[go].label + ' details <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></article>');
       }).join('') + '</section>' +
-      '<section class="p2">' + panel('Order, delivery & collection by month (Cr)', legendHTML(EXTCH[0].series) + '<div class="chart" id="cOv"></div>') +
+      '<section class="p2">' + panel('Order, delivery & collection by month (Cr)', legendHTML(EXTCH[0].series) + '<div class="chart" id="cOv"></div>', 'Bars = ' + F.year + ' · Lines = ' + PYR) +
         panel('Sales volume by month (TON)', legendHTML(EXTCH[1].series) + '<div class="chart" id="cTon"></div>', 'Delivered ' + nf0.format(E.dton || 0) + ' TON') + '</section>' +
       '<section class="p2 rev">' + panel('Conversion of orders', '<div class="rings">' + ring(r.del, 'var(--c2)', 'Delivery / Order', 'share of order value delivered') + ring(r.coll, 'var(--c4)', 'Collection / Order', 'share of order value collected') + '</div>') +
         panel('Key highlights', hlHTML(E.hl)) + '</section>' +
