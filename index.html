@@ -623,7 +623,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '17-Nov-2026 · v37';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '17-Nov-2026 · v38';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
    (or here). With a link the page asks for a user name and password and reads the data from Google.
@@ -841,7 +841,7 @@ function spct(g){ return g == null ? 'n/a' : (g >= 0 ? '+' : '−') + nf1.format
 function growthView(k, M){
   var X = IX, R = X.R, pr = period(k, true), Y = pr.Y, isC = k === 'C', thr = X.thr;
   var lab = {O:['Order','order value','sales orders','SALES ORDER VALUE (TOTAL AMOUNT)','Monthly order value (Cr)','Order value = "Total Amount" of SALES_ORDER by Order Date, in Crore. Segments and SKU groups come from SKU_MASTER (Product Code = ERP_SKU_CODE). The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer (DOP excluded).','Order value up to '],
-             D:['Delivery','delivery value','deliveries','DELIVERY VALUE (W/O DISCOUNT)','Monthly delivery value (Cr)','Delivery value = "Delivery Amount W/O Discount" of DELIVERY_ORDER by Delivery Date, in Crore. Segments and SKU groups come from SKU_MASTER (Product Code = ERP_SKU_CODE). The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer (DOP excluded).','Delivery value up to '],
+             D:['Delivery','delivery value','deliveries','DELIVERY VALUE (W/O DISCOUNT)','Monthly delivery value (Cr)','Delivery value = "Delivery Amount W/O Discount" of DELIVERY_ORDER ("Delivery Amount" where that column is empty, as in 2025) by Delivery Date, in Crore. Segments and SKU groups come from SKU_MASTER (Product Code = ERP_SKU_CODE). The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer (DOP excluded).','Delivery value up to '],
              C:['Collection','collection','collections','PRIMARY SALES COLLECTION','Monthly collection (Cr)','Collection = "Collection Amount" of PRIMARY_SALES_COLLECTION by Collection Date, in Crore. Business unit = BU of the customer in CUSTOMER_MASTER (Customer Code = Distributor Code). Top / Rest = customers of the Adhesive & Thinner BUs (DOP excluded). All collection types are counted, including commissions and bank charges.','Collection up to ']}[k];
   var Mx = isC ? {c:M.c, s:M.s, sOn:false} : M;
   // groups: SKU groups (Order, Delivery) or customers in CUSTOMER_MASTER (Collection)
@@ -970,7 +970,7 @@ function extViews(M){
     ratio:{coll:oc && !M.sOn ? r4(cc / oc) : null, del:oc ? r4(dc / oc) : null},
     mon:{order:mon(O, pO), delivery:mon(D, pO), collection:mon(C, pO), orderPY:pmon(O, 'O'), deliveryPY:pmon(D, 'D'), collectionPY:pmon(C, 'C')},
     ton:{order:mon(OT, pO), delivery:mon(DT, pO)}, dton:r2(DT.cy[0]), hl:hl,
-    foot:'Order = Total Amount (SALES_ORDER), Delivery = Delivery Amount W/O Discount (DELIVERY_ORDER), Collection = Collection Amount (PRIMARY_SALES_COLLECTION). Volume = quantity × TON_COV_FACTOR from SKU_MASTER (free products excluded). ' +
+    foot:'Order = Total Amount (SALES_ORDER), Delivery = Delivery Amount W/O Discount, or Delivery Amount where it is empty (DELIVERY_ORDER), Collection = Collection Amount (PRIMARY_SALES_COLLECTION). Volume = quantity × TON_COV_FACTOR from SKU_MASTER (free products excluded). ' +
       (F.month === 'auto' ? 'Period ' + P + (F.span === 'mtd' ? ' = the latest month' : ' runs to the latest month') + ' in the data. ' : '') + 'Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
 
   // business units (customer BU)
