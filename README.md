@@ -105,7 +105,7 @@ After that, just change the data:
 
 The script checks the source Sheets every 5 minutes. When something changed and the Sheets have been quiet for a minute, it rebuilds the dashboard data by itself (usually within 5–10 minutes). An open dashboard picks up the new data by itself and shows "New data loaded".
 
-* To update at once: **Dashboard → Update data now**.
+* To update at once: on the dashboard press **Update data → Update & reload** (any signed-in user), or in the Admin Sheet **Dashboard → Update data now**. Both do the same thing and take 1–3 minutes.
 * To see what happened: **Dashboard → Auto-update status** (last build time, or the error if a build failed, for example a missing tab).
 * A failed build is not repeated until the data changes again.
 
@@ -120,6 +120,34 @@ The script checks the source Sheets every 5 minutes. When something changed and 
 * The budget is per product. Year, Month, Period and Product Category filters apply; Business Unit, Region, Territory and Distributor do not.
 
 ## Users and passwords
+
+### Managing users from the dashboard (admins)
+
+Click the round badge with your initials at the top right of the dashboard.
+
+* Everyone sees their own name and access, **Change my password** and **Sign out**.
+* An **admin** also sees the list of users and can: **+ Add new user** (user name, full name, password, BU / Region / Zone, Admin yes/no), switch a user **Active / Inactive** (an inactive user is signed out at once and cannot sign in), and **Reset password**.
+* A new or reset password is shown once on the screen so you can pass it on; it is stored encrypted. The user can change it after signing in.
+* Who is an admin: `Yes` in the **Admin** column of the Users tab. The column is added by itself when the Admin Sheet is opened, with `Yes` for the user named `admin`.
+* You cannot switch off your own account. To change a user's BU / Region / Zone or name, or to delete a user, edit the Users tab.
+
+### Who sees what (BU / Region / Zone)
+
+The **Users** tab has three more columns: `BU`, `Region`, `Zone`. They are added by themselves when the Admin Sheet is opened.
+
+| BU | Region | Zone | The user sees |
+|---|---|---|---|
+| (empty) | (empty) | (empty) | everything (admin, management) |
+| Thinner | | | the whole Thinner business unit |
+| Thinner | WEST DSM | | only the WEST DSM region of Thinner |
+| Thinner | CENTRAL DSM | Dhaka ZM | only that zone |
+
+* Write the names as in the customer master: `BU`, `REGION_BASE`, and `ASM_BASE` for the zone (the Territory filter on the dashboard). Capital and small letters do not matter.
+* Several names in one cell: separate them with commas, for example `DOP, Adhesive`.
+* **Dashboard → Check user access** lists every user, what they see and how many customers match, and flags names that are not in the customer master.
+* The data is cut down on the server before it is sent, so a limited user's browser never receives other units' numbers.
+* A limited user does not see the Budget page, because the budget is one figure for the whole company.
+* A change takes effect the next time the user's dashboard loads data (reload the page, or **Sign everyone out**).
 
 * Add, change or remove people in the **Users** tab. Put `No` in **Active** to block someone.
 * **Passwords are stored encrypted** (a salted SHA-256 hash). Nobody can read them in the Sheet, not even you.

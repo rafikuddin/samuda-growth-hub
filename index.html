@@ -478,6 +478,25 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
   .mt{margin:0 40px}
 }
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow .2s} button.av:hover{transform:scale(1.07);box-shadow:0 0 0 3px rgba(255,255,255,.3)}
+.dlg.usd{width:min(640px,100%)}
+.ush{display:flex;align-items:center;gap:12px;padding-right:40px} .ush .av{width:44px;height:44px;font-size:15px} .ush b{display:block;font:600 17px var(--f-display)} .ush small{display:block;font-size:12px;color:var(--faint)}
+.usb{display:flex;flex-wrap:wrap;gap:8px} .usb .btn,.usr .btn,.usf .btn{height:36px;padding:0 15px;font-size:12px}
+.ust{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px;padding-top:14px;border-top:1px solid var(--line)} .ust h3{margin:0;font:600 15px var(--f-display)}
+.usl{display:flex;flex-direction:column;gap:8px}
+.usr{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:10px 12px;border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.14)}
+.usr.off{opacity:.62} .usr .uw{flex:1 1 180px;min-width:0} .usr .uw b{display:block;font-size:13.5px;font-weight:600;overflow-wrap:anywhere} .usr .uw small{display:block;font-size:11.5px;color:var(--faint);overflow-wrap:anywhere}
+.usr .tg{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:rgba(255,255,255,.1);color:var(--mut);margin-left:6px;vertical-align:1px}
+.usr .tg.ad{background:rgba(255,107,61,.2);color:var(--accent2)}
+.usr .btn.on{background:rgba(60,200,150,.16);color:var(--good);border:1px solid rgba(60,200,150,.4);box-shadow:none} .usr .btn.offb{background:rgba(255,90,90,.14);color:var(--bad);border:1px solid rgba(255,90,90,.4);box-shadow:none}
+.usr .rp{flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center} .usr .rp input{flex:1 1 170px}
+.usd input[type=text]{height:40px;min-width:0;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.07);color:var(--ink);font:500 13.5px var(--f-body)}
+.usd input[type=text]:focus{outline:0;border-color:rgba(255,130,90,.9);box-shadow:0 0 0 3px rgba(255,107,61,.22)}
+.pwd form.usf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 12px;padding:14px;border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.14)}
+.usf label{display:flex;flex-direction:column;gap:4px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)} .usf .w2{grid-column:1/-1}
+.usf .pg{display:flex;gap:8px} .usf .pg input{flex:1} .usf .ck{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12.5px;font-weight:500;color:var(--mut)}
+.usf .hint{grid-column:1/-1;font-size:11.5px;color:var(--faint);margin:0}
+@media (max-width:560px){.pwd form.usf{grid-template-columns:minmax(0,1fr)}}
 .who small.scp{color:var(--accent2);font-weight:600;white-space:normal}
 </style>
 </head>
@@ -554,6 +573,7 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
     <div class="btns"><button class="btn alt" id="pwc" type="button">Cancel</button><button class="btn" id="pwb" type="submit">Save new password</button></div>
   </form>
 </div></div>
+<div class="ov" id="ovUs" role="dialog" aria-modal="true" aria-labelledby="usT"><div class="dlg glass pwd usd" id="usd"></div></div>
 <div class="lgn" id="login" hidden>
   <div class="lgc" id="lgc">
     <svg class="msc" id="msc" viewBox="0 0 200 200" aria-hidden="true">
@@ -603,13 +623,13 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '17-Nov-2026 · v35';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '17-Nov-2026 · v36';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
    (or here). With a link the page asks for a user name and password and reads the data from Google.
    Without one it reads the public data.json next to this page. */
 var API_URL = '';
-var API = '', AUTH = false, TOKEN = null, USER = '', SCOPE = '';     // SCOPE: the BU / region / zone this user is limited to ('' = everything)
+var API = '', AUTH = false, TOKEN = null, USER = '', SCOPE = '', ADMIN = false;     // SCOPE: the BU / region / zone this user is limited to ('' = everything)
 var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 var $ = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
@@ -1302,7 +1322,7 @@ function headHTML(D){
     '<button class="search" id="srch" type="button" aria-label="Jump to"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><span>Jump to…</span><kbd>Ctrl K</kbd></button>' +
     '<button class="ib" id="thm" type="button" aria-label="Switch light or dark"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.3M12 19.2v2.3M2.5 12h2.3M19.2 12h2.3M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></svg></button>' +
     '<button class="cta" id="cta" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.7-6"/><path d="M20.5 4v4.8h-4.8"/></svg><span>Update data</span></button>' +
-    '<span class="av" title="' + esc(AUTH && USER ? USER : 'Samuda Spec-Chem Limited') + '">' + esc(AUTH && USER ? initials(USER) : 'SC') + '</span></header>' + filterHTML();
+    (AUTH && TOKEN ? '<button class="av" id="avb" type="button" title="' + esc((USER || 'Account') + (ADMIN ? ' · account and users' : ' · account')) + '" aria-label="Account' + (ADMIN ? ' and users' : '') + '">' + esc(initials(USER)) + '</button>' : '<span class="av" title="Samuda Spec-Chem Limited">SC</span>') + '</header>' + filterHTML();
 }
 
 
@@ -1828,6 +1848,7 @@ function wireView(){
   q('#cta', function(){ location.hash = 'update-data'; });
   q('#srch', openPal);
   q('#mnu', openNav);
+  q('#avb', openUs);
   q('#thm', toggleTheme);
   $$('[data-go]', stage).forEach(function(b){
     var go = function(){ show(b.dataset.go); try { if (location.hash !== '#' + b.dataset.go) location.hash = b.dataset.go; } catch(e){} window.scrollTo(0, 0); };
@@ -1911,7 +1932,7 @@ function api(payload){
 var NOACC = '';
 function takeApi(j){
   if (j && j.name) USER = j.name;
-  if (j) SCOPE = j.scope || '';
+  if (j) { SCOPE = j.scope || ''; ADMIN = j.admin === true; }
   if (j && j.error === 'noaccess') { GHSTATE = 'noaccess'; NOACC = j.message || ''; return 'noaccess'; }
   if (j && j.ok && validRaw(j.data)) { adopt(j.data, 'sheet'); return 'ok'; }
   if (j && j.error === 'nodata') { GHSTATE = 'nodata'; return 'nodata'; }
@@ -1971,7 +1992,7 @@ function showLogin(message, checking){
 }
 function hideLogin(){ lg.ov.hidden = true; document.body.classList.remove('locked'); lg.card.classList.remove('busy'); }
 function lockOut(message){
-  clearTok(); DATA = null; RAW = null; IX = null; USER = ''; SCOPE = ''; SRC = {kind:'none', at:''}; GHSTATE = 'loading';
+  clearTok(); DATA = null; RAW = null; IX = null; USER = ''; SCOPE = ''; ADMIN = false; closeUs(); SRC = {kind:'none', at:''}; GHSTATE = 'loading';
   closeUpd(true); closePal(); closeNav(); closePw(); closeDrill();
   if (current && ALL.indexOf(current) > -1) render(current);
   showLogin(message);
@@ -2033,6 +2054,93 @@ pw.form.addEventListener('submit', function(e){
     if (j && j.error === 'old') { pw.o.value = ''; pw.o.focus(); }
   }, function(){ pw.b.disabled = false; pw.b.textContent = 'Save new password'; pwSay('Could not reach the service. Check your internet connection and try again.'); });
 });
+/* ---------- account + user management (round badge, top right) ---------- */
+var us = {ov:$('#ovUs'), box:$('#usd'), list:null, open:'', add:false, msg:'', ok:true, busy:false};
+function closeUs(){ if (us && us.ov) us.ov.classList.remove('on'); }
+function newPass(){ var a = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789', o = '', r = new Uint32Array(10); (window.crypto || window.msCrypto).getRandomValues(r); for (var i = 0; i < 10; i++) o += a.charAt(r[i] % a.length); return o; }
+function usAccess(u){ return [u.bu, u.reg, u.zone].filter(Boolean).join(' · ') || 'All data'; }
+function usDraw(){
+  var h = '<button class="ib x" id="usx" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>' +
+    '<div class="ush"><span class="av">' + esc(initials(USER)) + '</span><div><b id="usT">' + esc(USER || 'Signed in') + '</b><small>' + (ADMIN ? 'Admin · ' : '') + esc(SCOPE ? 'Access: ' + SCOPE : 'Access: all data') + '</small></div></div>' +
+    '<div class="usb"><button class="btn alt" id="uspw" type="button">Change my password</button><button class="btn alt" id="usso" type="button">Sign out</button></div>';
+  if (ADMIN) {
+    h += '<div class="ust"><h3>Users' + (us.list ? ' (' + us.list.length + ')' : '') + '</h3><button class="btn" id="usadd" type="button"' + (us.busy ? ' disabled' : '') + '>' + (us.add ? 'Close form' : '+ Add new user') + '</button></div>';
+    if (us.add) {
+      var dl = function(id, a){ return '<datalist id="' + id + '">' + (a || []).map(function(x){ return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>'; };
+      h += '<form class="usf" id="usf" autocomplete="off" novalidate>' +
+        '<label>User name<input type="text" id="usu" maxlength="30" autocapitalize="none" spellcheck="false" placeholder="for example karim"></label>' +
+        '<label>Full name<input type="text" id="usn" maxlength="60" placeholder="Karim Ahmed"></label>' +
+        '<label class="w2">Password (at least 8 characters)<span class="pg"><input type="text" id="usp" maxlength="200" spellcheck="false" autocomplete="off"><button class="btn alt" id="usg" type="button">Generate</button></span></label>' +
+        '<label>BU<input type="text" id="usbu" list="dlbu" placeholder="empty = all"></label><label>Region<input type="text" id="usrg" list="dlrg" placeholder="empty = whole BU"></label>' +
+        '<label>Zone<input type="text" id="uszn" list="dlzn" placeholder="empty = whole region"></label><label class="ck"><input type="checkbox" id="usad"> Admin (may manage users)</label>' +
+        '<p class="hint">Empty BU, Region and Zone = sees everything. BU only = that BU. BU + Region = that region. BU + Region + Zone = that zone. Give the user name and password to the person; they can change the password after signing in.</p>' +
+        '<div class="w2"><button class="btn" type="submit"' + (us.busy ? ' disabled' : '') + '>Save user</button></div>' +
+        (IX ? dl('dlbu', IX.bu) + dl('dlrg', IX.reg) + dl('dlzn', IX.ter) : '') + '</form>';
+    }
+    h += '<div class="msg ' + (us.msg ? (us.ok ? 'ok' : 'err') : '') + '" id="usm" role="status" aria-live="polite">' + esc(us.msg) + '</div>';
+    h += '<div class="usl">' + (!us.list ? '<small class="pwh">Reading the users…</small>' : us.list.map(function(u){
+      return '<div class="usr' + (u.active ? '' : ' off') + '" data-u="' + esc(u.u) + '"><div class="uw"><b>' + esc(u.n) + (u.admin ? '<span class="tg ad">Admin</span>' : '') + (u.you ? '<span class="tg">You</span>' : '') + '</b><small>' + esc(u.u) + ' · ' + esc(usAccess(u)) + '</small></div>' +
+        '<button class="btn ' + (u.active ? 'on' : 'offb') + '" data-act="tog" type="button"' + (u.you || us.busy ? ' disabled' : '') + ' title="' + (u.you ? 'You cannot switch off your own account' : (u.active ? 'Click to deactivate: the user can no longer sign in' : 'Click to activate')) + '">' + (u.active ? '● Active' : '○ Inactive') + '</button>' +
+        '<button class="btn alt" data-act="rp" type="button"' + (us.busy ? ' disabled' : '') + '>Reset password</button>' +
+        (us.open === u.u ? '<div class="rp"><input type="text" data-np maxlength="200" spellcheck="false" autocomplete="off" placeholder="New password (at least 8 characters)" aria-label="New password for ' + esc(u.n) + '"><button class="btn alt" data-act="gen" type="button">Generate</button><button class="btn" data-act="save" type="button"' + (us.busy ? ' disabled' : '') + '>Save</button></div>' : '') + '</div>';
+    }).join('')) + '</div>';
+  }
+  us.box.innerHTML = h;
+  $('#usx').addEventListener('click', closeUs);
+  $('#uspw').addEventListener('click', function(){ closeUs(); openPw(); });
+  $('#usso').addEventListener('click', function(){ closeUs(); signOut(); });
+  if (!ADMIN) return;
+  $('#usadd').addEventListener('click', function(){ us.add = !us.add; us.open = ''; us.msg = ''; usDraw(); if (us.add) { try { $('#usu').focus(); } catch(e){} } });
+  var f = $('#usf');
+  if (f) {
+    $('#usg').addEventListener('click', function(){ $('#usp').value = newPass(); });
+    f.addEventListener('submit', function(e){
+      e.preventDefault();
+      var v = {user:$('#usu').value.trim().toLowerCase(), name:$('#usn').value.trim(), pass:$('#usp').value, bu:$('#usbu').value.trim(), reg:$('#usrg').value.trim(), zone:$('#uszn').value.trim(), admin:$('#usad').checked};
+      if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(v.user)) { usSay('User name: 3 to 30 letters, numbers, dot, dash or underscore (no spaces).'); $('#usu').focus(); return; }
+      if (v.pass.length < 8) { usSay('The password needs at least 8 characters.'); $('#usp').focus(); return; }
+      if (!v.bu && (v.reg || v.zone)) { usSay('Choose the BU first, then the region and the zone.'); $('#usbu').focus(); return; }
+      if (!v.reg && v.zone) { usSay('Choose the region before the zone.'); $('#usrg').focus(); return; }
+      v.action = 'useradd';
+      usCall(v, function(){ us.add = false; return 'User ' + v.user + ' added. Password: ' + v.pass + '  (write it down now, it is not shown again)'; }, f);
+    });
+  }
+  $$('.usr', us.box).forEach(function(row){
+    var name = row.dataset.u, u = us.list.filter(function(x){ return x.u === name; })[0];
+    row.addEventListener('click', function(e){
+      var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
+      var act = b.dataset.act, inp = $('[data-np]', row);
+      if (act === 'rp') { us.open = us.open === name ? '' : name; us.msg = ''; usDraw(); var i2 = $('.usr[data-u="' + name.replace(/"/g, '') + '"] [data-np]', us.box); if (i2) i2.focus(); }
+      else if (act === 'gen') { inp.value = newPass(); }
+      else if (act === 'save') {
+        var np = inp.value; if (np.length < 8) { usSay('The password needs at least 8 characters.'); inp.focus(); return; }
+        usCall({action:'userpass', user:name, 'new':np}, function(){ us.open = ''; return 'Password of ' + name + ' reset to: ' + np + '  (write it down now, it is not shown again). Their other sessions were signed out.'; });
+      }
+      else if (act === 'tog') { usCall({action:'useractive', user:name, active:!u.active}, function(){ return u.n + ' is now ' + (u.active ? 'inactive and cannot sign in.' : 'active.'); }); }
+    });
+  });
+}
+function usSay(t, ok){ us.msg = t || ''; us.ok = !!ok; var m = $('#usm'); if (m) { m.textContent = us.msg; m.className = 'msg ' + (t ? (ok ? 'ok' : 'err') : ''); } }
+function usCall(payload, done, keepForm){
+  payload.token = TOKEN; us.busy = true; usSay('Saving…', true); $$('.btn', us.box).forEach(function(b){ b.disabled = true; });
+  api(payload).then(function(j){
+    us.busy = false;
+    if (j && j.error === 'auth') { closeUs(); lockOut('Your session has ended. Please sign in again.'); return; }
+    if (j && j.ok) { if (j.users) us.list = j.users; var t = done ? done() : ''; us.msg = t; us.ok = true; usDraw(); return; }
+    var saved = keepForm ? $$('input', keepForm).map(function(i){ return i.type === 'checkbox' ? i.checked : i.value; }) : null;
+    us.msg = (j && j.message) || (j && j.error === 'bad' ? 'The service does not know this request yet: install the newest Code.gs' + (/script\.google\.com/.test(API) ? '.' : ' and worker.js.') : 'Could not save. Try again.'); us.ok = false; usDraw();
+    if (saved) $$('#usf input', us.box).forEach(function(i, k){ if (i.type === 'checkbox') i.checked = saved[k]; else i.value = saved[k]; });
+  }, function(){ us.busy = false; us.msg = 'Could not reach the service. Check your internet connection and try again.'; us.ok = false; usDraw(); });
+}
+function openUs(){
+  if (!AUTH || !TOKEN) return;
+  closeNav(); us.list = null; us.open = ''; us.add = false; us.msg = ''; us.busy = false; usDraw(); us.ov.classList.add('on');
+  if (ADMIN) api({action:'users', token:TOKEN}).then(function(j){
+    if (j && j.error === 'auth') { closeUs(); lockOut('Your session has ended. Please sign in again.'); return; }
+    if (j && j.ok) { us.list = j.users; usDraw(); } else { us.list = us.list || []; us.msg = (j && j.error === 'bad') ? 'User management needs the newest Code.gs' + (/script\.google\.com/.test(API) ? '.' : ' and worker.js.') : ((j && j.message) || 'Could not read the users.'); us.ok = false; usDraw(); }
+  }, function(){ us.list = us.list || []; us.msg = 'Could not reach the service.'; us.ok = false; usDraw(); });
+}
+us.ov.addEventListener('mousedown', function(e){ if (e.target === us.ov) closeUs(); });
 /* ---------- data behind a number (drill-down) ---------- */
 var DRL = [], DRT = [], DS = null;
 var dr = {ov:$('#ovDr'), t:$('#drT'), s:$('#drS'), m:$('#drM'), q:$('#drQ'), w:$('#drW'), sum:$('#drSum'), n:$('#drN'), more:$('#drMore'), csv:$('#drCsv')};
@@ -2157,7 +2265,7 @@ function wireDrill(key){
 /* ---------- pick up newly built data by itself ---------- */
 var VERT = null;
 function quiet(){      // nothing open that a refresh would disturb
-  return lg.ov.hidden && !ovU.classList.contains('on') && !pw.ov.classList.contains('on') && !dr.ov.classList.contains('on') && !ovP.classList.contains('on') && !sideEl.classList.contains('open') &&
+  return lg.ov.hidden && !ovU.classList.contains('on') && !pw.ov.classList.contains('on') && !us.ov.classList.contains('on') && !dr.ov.classList.contains('on') && !ovP.classList.contains('on') && !sideEl.classList.contains('open') &&
     !($('#cbp', stage) && !$('#cbp', stage).hidden);
 }
 function checkNew(){
@@ -2277,7 +2385,7 @@ ovP.addEventListener('mousedown', function(e){ if (e.target === ovP) closePal();
 ovU.addEventListener('mousedown', function(e){ if (e.target === ovU) closeUpd(); });
 document.addEventListener('keydown', function(e){
   if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); openPal(); }
-  else if (e.key === 'Escape') { closePal(); closeUpd(); closeNav(); closePw(); closeDrill(); }
+  else if (e.key === 'Escape') { closePal(); closeUpd(); closeNav(); closePw(); closeDrill(); closeUs(); }
 });
 var LST = 'samuda-growth-hub-theme';
 function applyTheme(t){ if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); }
