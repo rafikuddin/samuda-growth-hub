@@ -86,7 +86,7 @@ button{font:inherit;color:inherit}
 .pace .bar i{display:block;height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent2),var(--accent));box-shadow:0 0 10px var(--accent-glow);transform-origin:left}
 .who{display:flex;align-items:center;gap:10px;padding:8px 8px 4px;font-size:11px;line-height:1.35;color:var(--mut)}
 .av{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font:700 12px var(--f-display);color:#fff;background:linear-gradient(145deg,#F5B81B,#FF6B3D);box-shadow:0 0 0 2px rgba(255,255,255,.18)}
-.who b{display:block;color:var(--ink);font-weight:600;font-size:12px} .who small{font-size:10.5px;color:var(--faint)}
+.who b{display:block;color:var(--ink);font-weight:600;font-size:12px} .who small{display:block;font-size:10.5px;color:var(--faint)}
 
 .scrim{display:none;position:fixed;inset:0;z-index:55;background:rgba(8,5,8,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:opacity .28s,visibility 0s .28s}
 .scrim.on{opacity:1;visibility:visible;transition:opacity .28s}
@@ -477,6 +477,7 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
   .mt{margin:0 40px}
 }
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+.who small.scp{color:var(--accent2);font-weight:600;white-space:normal}
 </style>
 </head>
 <body>
@@ -601,13 +602,13 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '17-Nov-2026 · v33';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '17-Nov-2026 · v34';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
    (or here). With a link the page asks for a user name and password and reads the data from Google.
    Without one it reads the public data.json next to this page. */
 var API_URL = '';
-var API = '', AUTH = false, TOKEN = null, USER = '';
+var API = '', AUTH = false, TOKEN = null, USER = '', SCOPE = '';     // SCOPE: the BU / region / zone this user is limited to ('' = everything)
 var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 var $ = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
@@ -693,7 +694,7 @@ try { var sf = JSON.parse(localStorage.getItem(LSF)); if (sf && typeof sf === 'o
   if (F.span !== 'mtd') F.span = 'ytd';
 })();
 function saveF(){ try { localStorage.setItem(LSF, JSON.stringify(F)); } catch(e){} }
-function validRaw(d){ try { return !!d && d.v >= 5 && d.O.a.length > 0 && d.cust.length > 0 && d.sku.length > 0 && !!d.meta.order; } catch(e){ return false; } }
+function validRaw(d){ try { return !!d && d.v >= 5 && (d.O.a.length > 0 || !!d.scope) && d.cust.length > 0 && d.sku.length > 0 && !!d.meta.order; } catch(e){ return false; } }
 function pd(s){ if (!s) return null; var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
 function fdate(dt){ return dt ? ('0' + dt.getDate()).slice(-2) + '-' + MONS[dt.getMonth()] + '-' + dt.getFullYear() : ''; }
 function regName(r){ return String(r || '').replace(/^COR-DOP\d+$/, 'COR-DOP'); }
@@ -1061,6 +1062,7 @@ function budgetView(M){
   var pO = period('O', false), pD = period('D', false), pC = period('C', false), P = pO.P, b = pO.b, Pn = span(pO.pl, Y);
   var base = {title:'Budget vs Actual  ·  ' + Pn, sub:'SALES BUDGET  ·  ORDER · DELIVERY · COLLECTION' + (F.cat ? '  ·  FILTER: ' + F.cat : ''), cmp:'Achievement = actual ÷ budget  ·  Value in Crore', info:'', period:Pn, year:Y};
   var has = false; if (B && B.ym) for (var z = 0; z < B.ym.length; z++) if (2000 + ((B.ym[z] / 12) | 0) === Y) { has = true; break; }
+  if (R.scope) { base.none = true; base.msg = 'The sales budget is set for the whole company, not per business unit, region or zone, so this page is shown only to users with full access.'; return base; }
   if (!has) { base.none = true; base.msg = B && B.ym && B.ym.length ? 'There is no budget for ' + Y + ' in the data. Add the ' + Y + ' budget Sheet to the Sources tab, then update the data.' : 'No budget has been loaded yet. Add the budget Google Sheets to the Sources tab of the Admin Sheet, then run Dashboard → Update data now.'; return base; }
   // budget is per product, so customer filters cannot apply here; product category does
   var allC = new Uint8Array(R.cust.length); allC.fill(1);
@@ -1291,7 +1293,7 @@ function renderView(key){
 function srcLabel(){ return SRC.kind === 'sheet' ? 'Google Sheets, built ' + SRC.at : (SRC.kind === 'github' ? 'GitHub data.json, built ' + SRC.at : 'no data loaded'); }
 function initials(n){ var p = String(n || '').trim().split(/\s+/).filter(Boolean); return ((p[0] || 'S').charAt(0) + (p.length > 1 ? p[p.length - 1].charAt(0) : (p[0] || 'SC').charAt(1) || '')).toUpperCase(); }
 function footHTML(){
-  return '<footer class="foot" data-rise><span>SAMUDA SPEC-CHEM LIMITED  |  Adhesive  |  Thinner  |  DOP  |  Build · Bond · Better</span><span>Data: ' + esc(srcLabel()) + '  ·  Page version ' + esc(PAGE_VERSION) + '</span></footer>';
+  return '<footer class="foot" data-rise><span>SAMUDA SPEC-CHEM LIMITED  |  Adhesive  |  Thinner  |  DOP  |  Build · Bond · Better</span><span>Data: ' + esc(srcLabel()) + '' + (SCOPE ? '  ·  Access: ' + esc(SCOPE) : '') + '  ·  Page version ' + esc(PAGE_VERSION) + '</span></footer>';
 }
 function headHTML(D){
   var cl = function(s){ return esc(String(s || '').replace(/\s{2,}/g, ' ')); };
@@ -1676,6 +1678,7 @@ function ghText(){
     if (GHSTATE === 'ok') return '<span class="src-ok">● Data loaded from Google Sheets (built ' + esc(SRC.at) + ').</span>';
     if (GHSTATE === 'loading') return 'Reading the data…';
     if (GHSTATE === 'nodata') return '<span class="src-warn">● No data has been built yet. In the Admin Google Sheet use Dashboard → Update data now.</span>';
+    if (GHSTATE === 'noaccess') return '<span class="src-warn">● ' + esc(NOACC) + '</span>';
     return '<span class="src-warn">● Could not reach the data service. Check the internet connection and try again.</span>';
   }
   if (GHSTATE === 'ok') return '<span class="src-ok">● Loaded data.json from GitHub (built ' + esc(SRC.at) + ').</span>';
@@ -1806,7 +1809,7 @@ function updateChrome(key){
   });
   var arr = VIEWS.indexOf(key) > -1 ? DATA.views[key].mon.cy : DATA.ext.overview.mon.order, months = arr.filter(function(v){ return v != null; }).length, p = Math.round(months / 12 * 100);
   $('#srcnote').innerHTML = '<div class="pace"><div class="r1"><span>Year covered</span><b>' + p + '%</b></div><div class="bar"><i style="width:' + p + '%"></i></div>' + months + ' of 12 months reported</div>' +
-    (AUTH ? '<div class="who"><span class="av">' + esc(initials(USER)) + '</span><div><b>' + esc(USER || 'Signed in') + '</b><small>Data built ' + esc(SRC.at) + '</small><small>Page ' + esc(PAGE_VERSION) + '</small></div></div>' + signOutBtn()
+    (AUTH ? '<div class="who"><span class="av">' + esc(initials(USER)) + '</span><div><b>' + esc(USER || 'Signed in') + '</b>' + (SCOPE ? '<small class="scp" title="You see the data of: ' + esc(SCOPE) + '">' + esc(SCOPE) + '</small>' : '') + '<small>Data built ' + esc(SRC.at) + '</small><small>Page ' + esc(PAGE_VERSION) + '</small></div></div>' + signOutBtn()
           : '<div class="who"><span class="av">SC</span><div><b>GitHub data.json</b><small>' + esc(SRC.at) + '</small></div></div>');
   wireSignOut();
 }
@@ -1832,6 +1835,7 @@ function emptyHTML(){
   var load = GHSTATE === 'loading';
   if (AUTH) return headHTML({title:'Samuda Growth Hub', sub:load ? 'LOADING DATA' : 'NO DATA', cmp:load ? 'Reading the data…' : ''}) +
     (load ? '<div class="banner note" data-rise>Reading the data…</div>' :
+     GHSTATE === 'noaccess' ? '<div class="banner warn" data-rise>⚠  ' + esc(NOACC) + '</div>' :
      GHSTATE === 'nodata' ? '<div class="banner warn" data-rise>⚠  No dashboard data has been built yet. In the Dashboard Admin Google Sheet choose Dashboard → Update data now, then press Update data → Update & reload here.</div>' :
      '<div class="banner warn" data-rise>⚠  Could not reach the data service. Check the internet connection, then press Update data → Update & reload.</div>');
   return headHTML({title:'Samuda Growth Hub', sub:load ? 'LOADING DATA' : 'NO DATA', cmp:load ? 'Reading data.json…' : 'data.json was not found'}) +
@@ -1900,8 +1904,11 @@ function clearTok(){ try { localStorage.removeItem(TK); sessionStorage.removeIte
 function api(payload){
   return fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload), redirect:'follow'}).then(function(r){ return r.json(); });
 }
+var NOACC = '';
 function takeApi(j){
   if (j && j.name) USER = j.name;
+  if (j) SCOPE = j.scope || '';
+  if (j && j.error === 'noaccess') { GHSTATE = 'noaccess'; NOACC = j.message || ''; return 'noaccess'; }
   if (j && j.ok && validRaw(j.data)) { adopt(j.data, 'sheet'); return 'ok'; }
   if (j && j.error === 'nodata') { GHSTATE = 'nodata'; return 'nodata'; }
   if (j && j.error === 'auth') return 'auth';
@@ -1960,7 +1967,7 @@ function showLogin(message, checking){
 }
 function hideLogin(){ lg.ov.hidden = true; document.body.classList.remove('locked'); lg.card.classList.remove('busy'); }
 function lockOut(message){
-  clearTok(); DATA = null; RAW = null; IX = null; USER = ''; SRC = {kind:'none', at:''}; GHSTATE = 'loading';
+  clearTok(); DATA = null; RAW = null; IX = null; USER = ''; SCOPE = ''; SRC = {kind:'none', at:''}; GHSTATE = 'loading';
   closeUpd(true); closePal(); closeNav(); closePw(); closeDrill();
   if (current && ALL.indexOf(current) > -1) render(current);
   showLogin(message);
@@ -1974,7 +1981,7 @@ lg.form.addEventListener('submit', function(e){
   api({action:'login', user:u, pass:p, keep:keep}).then(function(j){
     if (j && j.token) { TOKEN = j.token; setTok(TOKEN, keep); }
     var st = takeApi(j);
-    if (st === 'ok' || st === 'nodata') {
+    if (st === 'ok' || st === 'nodata' || st === 'noaccess') {
       lg.msc.classList.remove('cover', 'peek'); mLook(0, -3); mMouth('joy'); lgBusy(true, 'Welcome' + (USER ? ', ' + USER.split(' ')[0] : '') + '!');
       setTimeout(function(){ hideLogin(); afterLoad(st === 'ok'); window.scrollTo(0, 0); }, reduce ? 0 : 650);
       return;
