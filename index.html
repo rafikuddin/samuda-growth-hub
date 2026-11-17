@@ -138,8 +138,8 @@ kbd{font:600 10px var(--f-body);color:var(--mut);border:1px solid var(--line);bo
 .tile h3{margin:0;display:flex;gap:8px;align-items:center;font:600 10.5px/1.25 var(--f-body);letter-spacing:.09em;color:var(--mut);text-transform:uppercase}
 .tile h3 i{width:8px;height:8px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c);flex:none}
 .trow{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.tmain{display:flex;flex-direction:column;gap:7px;min-width:0}
-.val{font:600 34px/1 var(--f-display);letter-spacing:-.025em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tmain{display:flex;flex-direction:column;gap:7px;min-width:0;flex:1 1 0}
+.val{font:600 34px/1 var(--f-display);letter-spacing:-.025em;font-variant-numeric:tabular-nums;white-space:nowrap;min-width:0;max-width:100%;overflow:hidden;padding-bottom:.08em}
 .val small{font-size:15px;font-weight:500;color:var(--mut);margin-left:5px;letter-spacing:0}
 .tsub{font-size:11.5px;color:var(--mut)}
 .chip{display:inline-flex;align-self:flex-start;align-items:center;padding:4px 10px;border-radius:999px;font-weight:600;font-size:12px;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -601,7 +601,7 @@ table.t tbody tr{transition:background-color .15s} table.t tbody tr:hover{backgr
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '16-Nov-2026 · v32';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '17-Nov-2026 · v33';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
    (or here). With a link the page asks for a user name and password and reads the data from Google.
@@ -647,18 +647,29 @@ function tween(o){
   })(performance.now());
 }
 var nf0 = new Intl.NumberFormat('en-US', {maximumFractionDigits:0});
-var nf1 = new Intl.NumberFormat('en-US', {minimumFractionDigits:1, maximumFractionDigits:1});
+var nf1 = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});      // every amount, TON and % is shown with 2 digits after the point
 var FMT = {
-  cr0: function(v){ return nf0.format(Math.round(v)); },
+  cr0: function(v){ return nf1.format(v); },
   d1:  function(v){ return nf1.format(v); },
   pct: function(v, fin){ return (fin >= 0 ? '+' : '−') + nf1.format(Math.abs(v) * 100) + '%'; },
   gch: function(v, fin){ return (fin >= 0 ? '▲ ' : '▼ ') + nf1.format(Math.abs(v) * 100) + '%'; },
   crc: function(v, fin){ return (fin >= 0 ? '▲ ' : '▼ ') + nf1.format(Math.abs(v)) + ' Cr'; },
-  cr:  function(v, fin){ return Math.abs(fin) >= 100 ? nf0.format(Math.round(v)) : nf1.format(v); },
+  cr:  function(v){ return nf1.format(v); },
+  t2:  function(v){ return nf1.format(v); },
   n0:  function(v){ return nf0.format(Math.round(v)); },
-  tnc: function(v, fin){ return (fin >= 0 ? '▲ ' : '▼ ') + nf0.format(Math.abs(Math.round(v))) + ' TON'; },
-  pc0: function(v){ return nf0.format(Math.round(v * 100)) + '%'; }
+  tnc: function(v, fin){ return (fin >= 0 ? '▲ ' : '▼ ') + nf1.format(Math.abs(v)) + ' TON'; },
+  pc0: function(v){ return nf1.format(v * 100) + '%'; }
 };
+function fitVals(){        // a long number (1,234.56) must not run under the ring beside it: shrink it until it fits
+  $$('.tile .val', stage).forEach(function(v){
+    var c = $('[data-count]', v), keep = null;
+    if (c) { var fin = parseFloat(c.dataset.count), f = FMT[c.dataset.f]; if (isFinite(fin) && f) { keep = c.textContent; c.textContent = f(fin, fin); } }
+    v.style.fontSize = '';
+    var size = parseFloat(getComputedStyle(v).fontSize), min = Math.max(16, size * .55);
+    while (v.scrollWidth > v.clientWidth + 1 && size > min) { size -= 1; v.style.fontSize = size + 'px'; }
+    if (keep != null) c.textContent = keep;
+  });
+}
 function countUp(el, delay){
   var fin = parseFloat(el.dataset.count), f = FMT[el.dataset.f];
   if (!isFinite(fin) || !f) return;
@@ -798,9 +809,10 @@ function roll(k, pr, keyOf, n, val, M){
 function sum(a){ var s = 0; for (var i = 0; i < a.length; i++) s += a[i]; return s; }
 function gr(lc, py){ return py > 0 ? lc / py - 1 : null; }
 function r4(x){ return x == null || !isFinite(x) ? null : Math.round(x * 1e4) / 1e4; }
-function fcr(v){ return Math.abs(v) < 10 ? nf2.format(v) : nf0.format(v); }
+function fcr(v){ return nf2.format(v); }
+function r2(x){ return x == null || !isFinite(x) ? null : Math.round(x * 100) / 100; }
 var nf2 = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
-function p0(g){ return nf0.format(Math.abs(Math.round(g * 100))) + '%'; }
+function p0(g){ return nf2.format(Math.abs(g * 100)) + '%'; }
 function spct(g){ return g == null ? 'n/a' : (g >= 0 ? '+' : '−') + nf1.format(Math.abs(g * 100)) + '%'; }
 
 /* ---------- Order / Delivery / Collection growth views (Excel logic) ---------- */
@@ -854,7 +866,7 @@ function growthView(k, M){
   // movers (change on like-for-like months)
   var mov = [];
   var gname = function(g){ return isC ? R.cust[g][1] : X.grp[g]; };
-  var glab = function(g){ var e = G.py[g] === 0 ? (G.lc[g] > 0 ? 'New' : '-') : (G.lc[g] / G.py[g] - 1 >= 0 ? '+' : '-') + String(Math.abs(Math.round((G.lc[g] / G.py[g] - 1) * 100))) + '%'; return gname(g).slice(0, 30) + '  ' + e; };
+  var glab = function(g){ var e = G.py[g] === 0 ? (G.lc[g] > 0 ? 'New' : '-') : (G.lc[g] / G.py[g] - 1 >= 0 ? '+' : '-') + nf2.format(Math.abs((G.lc[g] / G.py[g] - 1) * 100)) + '%'; return gname(g).slice(0, 30) + '  ' + e; };
   var drv = [], dec = [];
   if (natPY > 0) {
     var ch = ids.map(function(g){ return [g, G.lc[g] - G.py[g]]; });
@@ -909,7 +921,7 @@ function extViews(M){
   var lflO = span(pO.ll), lflC = span(pC.ll);
   function kt(t, A, pr, u){
     var cy = A.cy[0], lc = A.lc[0], py = A.py[0], g = py > 0 ? lc / py - 1 : null;
-    return {t:t, cy:u ? Math.round(cy * 10) / 10 : r4(cy), py:py > 0 ? (u ? Math.round(py * 10) / 10 : r4(py)) : 0, lcy:pr.same ? null : r4(lc), g:r4(g), d:g == null ? null : (u ? Math.round((lc - py) * 10) / 10 : r4(lc - py)), u:u || 'Cr', s:gnote(pr, py)};
+    return {t:t, cy:u ? r2(cy) : r4(cy), py:py > 0 ? (u ? r2(py) : r4(py)) : 0, lcy:pr.same ? null : r4(lc), g:r4(g), d:g == null ? null : (u ? r2(lc - py) : r4(lc - py)), u:u || 'Cr', s:gnote(pr, py)};
   }
   var oc = O.cy[0], dc = D.cy[0], cc = C.cy[0];
   var ft = filterText(), fsub = ft ? '  ·  FILTER: ' + ft : '';
@@ -922,8 +934,8 @@ function extViews(M){
   var hl = [];
   hl.push({k:gO == null ? 'info' : (gO >= 0 ? 'up' : 'down'), t:'Order value ' + nf1.format(oc) + ' Cr in ' + P + (gO == null ? '; no ' + (Y - 1) + ' orders to compare.' : '; ' + spct(gO) + ' vs ' + (Y - 1) + (pO.same ? '.' : ' (' + lflO + ' like-for-like).'))});
   if (gC != null) hl.push({k:gC >= 0 ? 'up' : 'down', t:'Collection ' + nf1.format(cc) + ' Cr, ' + spct(gC) + ' vs ' + span(pC.ll, Y - 1) + '.'});
-  if (oc > 0 && !M.sOn) hl.push({k:cc / oc >= .95 ? 'up' : 'warn', t:'Collection covers ' + nf0.format(cc / oc * 100) + '% of order value in the period.'});
-  if (oc > 0) hl.push({k:dc / oc >= .9 ? 'info' : 'warn', t:'Delivery is ' + nf0.format(dc / oc * 100) + '% of order value (' + nf1.format(dc) + ' Cr delivered).'});
+  if (oc > 0 && !M.sOn) hl.push({k:cc / oc >= .95 ? 'up' : 'warn', t:'Collection covers ' + nf2.format(cc / oc * 100) + '% of order value in the period.'});
+  if (oc > 0) hl.push({k:dc / oc >= .9 ? 'info' : 'warn', t:'Delivery is ' + nf2.format(dc / oc * 100) + '% of order value (' + nf1.format(dc) + ' Cr delivered).'});
   var runO = running('O', Y, pO.b) || running('C', Y, pC.b) || running('D', Y, pD.b);
   var cutO = pO.cut || pC.cut || pD.cut;
   if (cutO && (gO != null || gC != null)) hl.push({k:'info', t:'Same-date comparison: ' + MONL[cutO.m - 1] + ' is counted up to the ' + ordinal(cutO.day) + ' in both years (data up to ' + fdate(cutO.la) + ').'});
@@ -935,7 +947,7 @@ function extViews(M){
     kpis:[kt('ORDER VALUE', O, pO), kt('DELIVERY VALUE', D, pD), kt('COLLECTION', C, pC), kt('SALES VOLUME (ORDER)', OT, pO, 'TON')],
     ratio:{coll:oc && !M.sOn ? r4(cc / oc) : null, del:oc ? r4(dc / oc) : null},
     mon:{order:mon(O, pO), delivery:mon(D, pO), collection:mon(C, pO), orderPY:pmon(O, 'O'), deliveryPY:pmon(D, 'D'), collectionPY:pmon(C, 'C')},
-    ton:{order:mon(OT, pO), delivery:mon(DT, pO)}, dton:Math.round(DT.cy[0] * 10) / 10, hl:hl,
+    ton:{order:mon(OT, pO), delivery:mon(DT, pO)}, dton:r2(DT.cy[0]), hl:hl,
     foot:'Order = Total Amount (SALES_ORDER), Delivery = Delivery Amount (DELIVERY_ORDER), Collection = Collection Amount (PRIMARY_SALES_COLLECTION). Volume = quantity × TON_COV_FACTOR from SKU_MASTER (free products excluded). ' +
       (F.month === 'auto' ? 'Period ' + P + (F.span === 'mtd' ? ' = the latest month' : ' runs to the latest month') + ' in the data. ' : '') + 'Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
 
@@ -944,7 +956,7 @@ function extViews(M){
   var bO = roll('O', pO, byBu, nb, 'a', M), bD = roll('D', pD, byBu, nb, 'a', M), bC = roll('C', pC, byBu, nb, 'a', Mc), bT = roll('O', pO, byBu, nb, 't', M);
   var bids = []; for (var b = 0; b < nb; b++) if (bO.cy[b] > 0 || bC.cy[b] > 0) bids.push(b);
   bids.sort(function(a, b2){ return bO.cy[b2] - bO.cy[a]; });
-  var burows = bids.map(function(b){ return {n:X.bu[b], o:r4(bO.cy[b]), og:r4(gr(bO.lc[b], bO.py[b])), d:r4(bD.cy[b]), c:r4(bC.cy[b]), cg:r4(gr(bC.lc[b], bC.py[b])), cr:bO.cy[b] && !M.sOn ? r4(bC.cy[b] / bO.cy[b]) : null, ton:Math.round(bT.cy[b] * 10) / 10}; });
+  var burows = bids.map(function(b){ return {n:X.bu[b], o:r4(bO.cy[b]), og:r4(gr(bO.lc[b], bO.py[b])), d:r4(bD.cy[b]), c:r4(bC.cy[b]), cg:r4(gr(bC.lc[b], bC.py[b])), cr:bO.cy[b] && !M.sOn ? r4(bC.cy[b] / bO.cy[b]) : null, ton:r2(bT.cy[b])}; });
   var sg = roll('O', pO, function(i, c, s){ return X.sSeg[s]; }, X.seg.length, 'a', M);
   var segs = []; for (var q = 0; q < X.seg.length; q++) if (sg.cy[q] > 0) segs.push({n:X.seg[q], v:r4(sg.cy[q]), g:r4(gr(sg.lc[q], sg.py[q]))});
   segs.sort(function(a, b2){ return b2.v - a.v; });
@@ -959,8 +971,8 @@ function extViews(M){
     if (worst !== best) bins.push({k:worst.og < 0 ? 'down' : 'info', t:worst.n + ' BU order value ' + spct(worst.og) + (pO.same ? '.' : ' (' + lflO + ' like-for-like).')});
   }
   var lowc = burows.filter(function(r){ return r.cr != null && r.o > 1; });
-  if (lowc.length) { var w = lowc.reduce(function(a, r){ return r.cr < a.cr ? r : a; }); bins.push({k:w.cr < .95 ? 'warn' : 'info', t:w.n + ' BU collection covers ' + nf0.format(w.cr * 100) + '% of its order value.'}); }
-  if (segs.length && oc) bins.push({k:'info', t:'Largest product segment: ' + segs[0].n + ' with ' + nf1.format(segs[0].v) + ' Cr (' + nf0.format(segs[0].v / oc * 100) + '% of orders).'});
+  if (lowc.length) { var w = lowc.reduce(function(a, r){ return r.cr < a.cr ? r : a; }); bins.push({k:w.cr < .95 ? 'warn' : 'info', t:w.n + ' BU collection covers ' + nf2.format(w.cr * 100) + '% of its order value.'}); }
+  if (segs.length && oc) bins.push({k:'info', t:'Largest product segment: ' + segs[0].n + ' with ' + nf1.format(segs[0].v) + ' Cr (' + nf2.format(segs[0].v / oc * 100) + '% of orders).'});
   var bu = {title:'Business Unit Performance  ·  ' + P, sub:'BUSINESS UNIT = CUSTOMER BU FROM CUSTOMER_MASTER' + fsub, cmp:'Order, delivery and collection per business unit  ·  Value in Crore',
     info:'Data up to ' + asof, period:P, rows:burows, segs:segs, mon:bumon, ins:bins,
     foot:'Each customer is placed in a business unit by CUSTOMER_MASTER (Customer Code = DISTRIBUTOR_CODE), so order, delivery and collection add up per BU. Segment mix uses SKU_MASTER SKU_SEGMENT. Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
@@ -981,8 +993,8 @@ function extViews(M){
     if (rw !== rb) rins.push({k:rw.og < 0 ? 'down' : 'info', t:'Slowest region: ' + rw.n + ', ' + spct(rw.og) + '.'});
   }
   var lc2 = rrows.filter(function(x){ return x.cr != null && x.o > 1; });
-  if (lc2.length) { var lw = lc2.reduce(function(a, x){ return x.cr < a.cr ? x : a; }); rins.push({k:'warn', t:'Lowest collection cover: ' + lw.n + ' at ' + nf0.format(lw.cr * 100) + '% of order value.'}); }
-  if (rrows.length) rins.push({k:'info', t:rrows[0].n + ' is the largest region with ' + nf0.format((rrows[0].sh || 0) * 100) + '% of order value.'});
+  if (lc2.length) { var lw = lc2.reduce(function(a, x){ return x.cr < a.cr ? x : a; }); rins.push({k:'warn', t:'Lowest collection cover: ' + lw.n + ' at ' + nf2.format(lw.cr * 100) + '% of order value.'}); }
+  if (rrows.length) rins.push({k:'info', t:rrows[0].n + ' is the largest region with ' + nf2.format((rrows[0].sh || 0) * 100) + '% of order value.'});
   var region = {title:'Regional Performance  ·  ' + P, sub:'REGION = REGION_BASE FROM CUSTOMER_MASTER' + fsub, cmp:'Order, delivery and collection by region  ·  Value in Crore',
     info:'Data up to ' + asof, period:P, rows:rrows, chan:chan, ins:rins,
     foot:'Region and channel come from CUSTOMER_MASTER (REGION_BASE, DISTRIBUTION_CHANNEL); COR-DOP01/02/03 are shown together as COR-DOP. Order growth: ' + gnote(pO, O.py[0]) + '; Collection growth: ' + gnote(pC, C.py[0]) + '.' + catNote};
@@ -993,19 +1005,19 @@ function extViews(M){
   var pS = roll('O', pO, function(i, c, s){ return sName[s]; }, names.length, 'a', M), pT = roll('O', pO, function(i, c, s){ return sName[s]; }, names.length, 't', M);
   var pids = []; for (var pi = 0; pi < names.length; pi++) if (pS.cy[pi] > 0) pids.push(pi);
   pids.sort(function(a, b2){ return pS.cy[b2] - pS.cy[a]; });
-  var top10 = pids.slice(0, 10).map(function(i){ return {n:names[i], v:r4(pS.cy[i]), g:r4(gr(pS.lc[i], pS.py[i])), ton:Math.round(pT.cy[i] * 10) / 10, sh:oc ? r4(pS.cy[i] / oc) : null}; });
+  var top10 = pids.slice(0, 10).map(function(i){ return {n:names[i], v:r4(pS.cy[i]), g:r4(gr(pS.lc[i], pS.py[i])), ton:r2(pT.cy[i]), sh:oc ? r4(pS.cy[i] / oc) : null}; });
   var pg = roll('O', pO, function(i, c, s){ return X.sGrp[s]; }, X.grp.length, 'a', M), up = [], dn = [];
   if (pO.ll.length && O.py[0] > 0) {
     var gl = []; for (var gi = 0; gi < X.grp.length; gi++) { var dl = pg.lc[gi] - pg.py[gi]; if (Math.abs(dl) > 1e-6) gl.push([gi, dl]); }
-    var lab = function(gi){ return pg.py[gi] <= 0 ? 'New' : ((pg.lc[gi] / pg.py[gi] - 1) >= 0 ? '+' : '-') + String(Math.abs(Math.round((pg.lc[gi] / pg.py[gi] - 1) * 100))) + '%'; };
+    var lab = function(gi){ return pg.py[gi] <= 0 ? 'New' : ((pg.lc[gi] / pg.py[gi] - 1) >= 0 ? '+' : '-') + nf2.format(Math.abs((pg.lc[gi] / pg.py[gi] - 1) * 100)) + '%'; };
     up = gl.filter(function(x){ return x[1] > 0; }).sort(function(a, b2){ return b2[1] - a[1]; }).slice(0, 5).map(function(x){ return {n:X.grp[x[0]], v:r4(x[1]), p:lab(x[0])}; });
     dn = gl.filter(function(x){ return x[1] < 0; }).sort(function(a, b2){ return a[1] - b2[1]; }).slice(0, 5).map(function(x){ return {n:X.grp[x[0]], v:r4(x[1]), p:lab(x[0])}; });
   }
   var cA = roll('O', pO, function(i, c, s){ return X.sCat[s]; }, X.cat.length, 'a', M), cT = roll('O', pO, function(i, c, s){ return X.sCat[s]; }, X.cat.length, 't', M);
-  var cats = []; for (var ci = 0; ci < X.cat.length; ci++) if (cA.cy[ci] > 0) cats.push({n:X.cat[ci], v:r4(cA.cy[ci]), g:r4(gr(cA.lc[ci], cA.py[ci])), ton:Math.round(cT.cy[ci] * 10) / 10, sh:oc ? r4(cA.cy[ci] / oc) : null});
+  var cats = []; for (var ci = 0; ci < X.cat.length; ci++) if (cA.cy[ci] > 0) cats.push({n:X.cat[ci], v:r4(cA.cy[ci]), g:r4(gr(cA.lc[ci], cA.py[ci])), ton:r2(cT.cy[ci]), sh:oc ? r4(cA.cy[ci] / oc) : null});
   cats.sort(function(a, b2){ return b2.v - a.v; });
   var pins = [];
-  if (top10.length) pins.push({k:'info', t:'Top 10 SKUs make ' + nf0.format(top10.reduce(function(a, x){ return a + (x.sh || 0); }, 0) * 100) + '% of order value; #1 is ' + top10[0].n + ' (' + nf1.format(top10[0].v) + ' Cr).'});
+  if (top10.length) pins.push({k:'info', t:'Top 10 SKUs make ' + nf2.format(top10.reduce(function(a, x){ return a + (x.sh || 0); }, 0) * 100) + '% of order value; #1 is ' + top10[0].n + ' (' + nf1.format(top10[0].v) + ' Cr).'});
   if (up.length) pins.push({k:'up', t:'Biggest growth driver: ' + up[0].n + ' (+' + nf1.format(up[0].v) + ' Cr, ' + up[0].p + ').'});
   if (dn.length) pins.push({k:'down', t:'Largest decline: ' + dn[0].n + ' (' + nf1.format(dn[0].v) + ' Cr, ' + dn[0].p + ').'});
   var products = {title:'Product Performance  ·  ' + P, sub:'SKU, SKU GROUP AND CATEGORY FROM SKU_MASTER' + fsub, cmp:'Order value by product  ·  Value in Crore', info:'Data up to ' + asof, period:P,
@@ -1027,19 +1039,19 @@ function extViews(M){
   });
   var vals = function(o){ return Object.keys(o).map(function(k2){ return o[k2]; }).sort(function(a, b2){ return b2.v - a.v; }); };
   var cnt = function(o){ return Object.keys(o).length; };
-  var pb = vals(pbu).map(function(x){ return {n:x.n, v:r4(x.v), ton:Math.round(x.ton * 10) / 10, ord:cnt(x.o)}; });
+  var pb = vals(pbu).map(function(x){ return {n:x.n, v:r4(x.v), ton:r2(x.ton), ord:cnt(x.o)}; });
   var tdist = vals(pdist).slice(0, 10).map(function(x){ return {n:x.n, v:r4(x.v), ord:cnt(x.o), age:x.age}; });
-  var tsku = vals(psku).slice(0, 10).map(function(x){ return {n:x.n, v:r4(x.v), ton:Math.round(x.ton * 10) / 10, ord:cnt(x.o)}; });
+  var tsku = vals(psku).slice(0, 10).map(function(x){ return {n:x.n, v:r4(x.v), ton:r2(x.ton), ord:cnt(x.o)}; });
   age.forEach(function(x){ x.v = r4(x.v); });
   var pa = fdate(pd(R.meta.pendingAsOf)), pins2 = [];
   if (tot > 0) {
     pins2.push({k:'warn', t:nf1.format(tot) + ' Cr is ordered but not yet delivered across ' + nf0.format(cnt(ords)) + ' orders.'});
-    pins2.push({k:old / tot > .25 ? 'down' : 'info', t:nf0.format(old / tot * 100) + '% of the pending value is older than 30 days (' + nf1.format(old) + ' Cr).'});
+    pins2.push({k:old / tot > .25 ? 'down' : 'info', t:nf2.format(old / tot * 100) + '% of the pending value is older than 30 days (' + nf1.format(old) + ' Cr).'});
     if (pb.length) pins2.push({k:'info', t:pb[0].n + ' BU holds the most pending delivery: ' + nf1.format(pb[0].v) + ' Cr.'});
     if (tdist.length) pins2.push({k:'warn', t:'Follow up ' + tdist[0].n + ' first: ' + nf1.format(tdist[0].v) + ' Cr pending on ' + tdist[0].ord + ' orders.'});
   } else pins2.push({k:'up', t:'No pending delivery for this filter.'});
   var pending = {title:'Pending Delivery  ·  as of ' + pa, sub:'ORDERED BUT NOT YET DELIVERED' + fsub, cmp:'Open sales orders (Invoice Status “To Invoice”)  ·  Value in Crore', info:'Orders up to ' + pa,
-    asof:pa, tot:r4(tot), ton:Math.round(ton * 10) / 10, orders:cnt(ords), dists:cnt(dists), avg:tot ? Math.round(ageW / tot * 10) / 10 : null, age:age, bu:pb, dist:tdist, sku:tsku, ins:pins2,
+    asof:pa, tot:r4(tot), ton:r2(ton), orders:cnt(ords), dists:cnt(dists), avg:tot ? r2(ageW / tot) : null, age:age, bu:pb, dist:tdist, sku:tsku, ins:pins2,
     foot:'Pending = ordered quantity minus delivered quantity (DELIVERY_ORDER, same Sale Order and Product Code) on approved orders of ' + pa.slice(-4) + ' with Invoice Status “To Invoice”, valued at the order unit price less discount. Age = days from order date to ' + pa + '. Free products excluded. Year and Month filters do not change this view (it is a snapshot of open orders).'};
   return {overview:overview, bu:bu, region:region, products:products, pending:pending};
 }
@@ -1087,12 +1099,12 @@ function budgetView(M){
     var bt = bsum(kb, n, 't').a, ot = roll('O', pO, ka, n, 't', Ms).cy, dt = roll('D', pD, ka, n, 't', Ms).cy, rows = [];
     for (var i = 0; i < n; i++) if (bb[i] > 0 || oo[i] > 0 || dd[i] > 0)
       rows.push({n:names[i], b:r4(bb[i]), o:r4(oo[i]), oa:r4(ach(oo[i], bb[i])), d:r4(dd[i]), da:r4(ach(dd[i], bb[i])), gap:r4(dd[i] - bb[i]),
-        orem:r4(Math.max(0, bb[i] - oo[i])), orr:r4(rrOf(Math.max(0, bb[i] - oo[i]))), drem:r4(Math.max(0, bb[i] - dd[i])), drr:r4(rrOf(Math.max(0, bb[i] - dd[i]))), bt:Math.round(bt[i]), ot:Math.round(ot[i]), dt:Math.round(dt[i]), ta:r4(ach(dt[i], bt[i]))});
+        orem:r4(Math.max(0, bb[i] - oo[i])), orr:r4(rrOf(Math.max(0, bb[i] - oo[i]))), drem:r4(Math.max(0, bb[i] - dd[i])), drr:r4(rrOf(Math.max(0, bb[i] - dd[i]))), bt:r2(bt[i]), ot:r2(ot[i]), dt:r2(dt[i]), ta:r4(ach(dt[i], bt[i]))});
     rows.sort(function(x, y){ return y.b - x.b || y.d - x.d; });
     return rows;
   }
   var segs = table(X.seg, function(s){ return X.sSeg[s]; }), cats = table(X.cat, function(s){ return X.sCat[s]; }), grps = table(X.grp, function(s){ return X.sGrp[s]; });
-  var lab = function(x){ return x.b > 0 ? nf0.format(Math.round(x.da * 100)) + '% of budget' : 'no budget'; };
+  var lab = function(x){ return x.b > 0 ? nf2.format(x.da * 100) + '% of budget' : 'no budget'; };
   var behind = grps.filter(function(x){ return x.gap < -1e-4; }).sort(function(x, y){ return x.gap - y.gap; }).slice(0, 6).map(function(x){ return {n:x.n, v:x.gap, p:lab(x)}; });
   var ahead = grps.filter(function(x){ return x.gap > 1e-4; }).sort(function(x, y){ return y.gap - x.gap; }).slice(0, 6).map(function(x){ return {n:x.n, v:x.gap, p:lab(x)}; });
   var bTon = bsum(one, 1, 't').a[0], oTon = roll('O', pO, one, 1, 't', Ms).cy[0], dTon = roll('D', pD, one, 1, 't', Ms).cy[0];
@@ -1103,7 +1115,7 @@ function budgetView(M){
     : 'ℹ  Data up to ' + fdate(last) + '  ·  ' + wLeft + ' working day' + (wLeft === 1 ? '' : 's') + ' left to the end of ' + endTxt + ' (' + (offTxt || 'no weekly day off') + (hLeft ? ' and ' + hLeft + ' holiday' + (hLeft === 1 ? '' : 's') : '') + ' not counted).');
   if (M.cOn) notes.push('ℹ  The budget is set per product, so the Business Unit, Region, Territory and Distributor filters are not applied on this page.');
   if (M.sOn) notes.push('ℹ  Collection is not recorded per product, so it is not shown for one product category.');
-  var ins = [], pc = function(v){ return nf0.format(Math.round(v * 100)) + '%'; };
+  var ins = [], pc = function(v){ return nf2.format(v * 100) + '%'; };
   kpis.forEach(function(k){ if (k.ach != null) ins.push({k:k.ach >= 1 ? 'up' : (k.ach >= .9 ? 'warn' : 'down'), l:k.ach >= 1 ? 'ON BUDGET' : 'BELOW BUDGET', t:k.t.charAt(0) + k.t.slice(1).toLowerCase() + ' is ' + pc(k.ach) + ' of budget: ' + nf1.format(k.act) + ' Cr against ' + nf1.format(k.bud) + ' Cr (' + (k.gap >= 0 ? '+' : '−') + nf1.format(Math.abs(k.gap)) + ' Cr).'}); });
   var sg = segs.filter(function(x){ return x.b > 1 && x.da != null; });
   if (sg.length) { var bs = sg.reduce(function(a, x){ return x.da > a.da ? x : a; }), ws = sg.reduce(function(a, x){ return x.da < a.da ? x : a; });
@@ -1113,7 +1125,7 @@ function budgetView(M){
   base.bud = r4(bud); base.budFull = r4(bT.full); base.frac = frac; base.kpis = kpis; base.banner = notes.join('  ');
   base.mon = {budget:monB, order:monA(O), delivery:monA(D), collection:M.sOn ? null : monA(C)};
   base.segs = segs; base.cats = cats; base.behind = behind; base.ahead = ahead; base.ins = ins;
-  base.ton = {b:Math.round(bTon), o:Math.round(oTon), oa:r4(ach(oTon, bTon)), d:Math.round(dTon), da:r4(ach(dTon, bTon))};
+  base.ton = {b:r2(bTon), o:r2(oTon), oa:r4(ach(oTon, bTon)), d:r2(dTon), da:r4(ach(dTon, bTon))};
   base.info = 'Budget ' + Y + ': ' + nf1.format(bsum(one, 1, 'v').mon.reduce(function(a, v){ return a + v; }, 0)) + ' Cr for the year';
   base.foot = 'Budget = BUDGET_VALUE per month and product from the budget Sheets; the same sales budget is used for order, delivery and collection. Segment, category and SKU group come from SKU_MASTER. Volume = quantity × TON_COV_FACTOR.' + ' Remaining = budget − actual (never below 0). Daily required rate (RR) = remaining ÷ working days left to the end of ' + endTxt + '; working days leave out ' + (offTxt || 'no weekly day') + ' and the dates in the Holidays tab.';
   return base;
@@ -1187,7 +1199,7 @@ function tileHTML(t, i, M, flat){
   var cls = g == null ? 'na' : (g >= 0 ? 'up' : 'down');
   var chip = t.d == null ? '<span class="chip na">n/a</span>' : '<span class="chip ' + (t.d >= 0 ? 'up' : 'down') + '" data-count="' + t.d + '" data-f="' + (ton ? 'tnc' : 'crc') + '">' + FMT[ton ? 'tnc' : 'crc'](t.d, t.d) + '</span>';
   return '<article class="glass card lift tile' + (i === 0 && !flat ? ' hero' : '') + '" data-rise style="--c:' + c + '"><h3><i></i><span>' + esc(t.t) + '</span></h3>' +
-    '<div class="trow"><div class="tmain"><div class="val"><span data-count="' + t.cy + '" data-f="' + (ton ? 'n0' : 'cr0') + '">' + FMT[ton ? 'n0' : 'cr0'](t.cy) + '</span><small>' + (ton ? 'TON' : 'Cr') + '</small></div>' +
+    '<div class="trow"><div class="tmain"><div class="val"><span data-count="' + t.cy + '" data-f="' + (ton ? 't2' : 'cr0') + '">' + FMT[ton ? 't2' : 'cr0'](t.cy) + '</span><small>' + (ton ? 'TON' : 'Cr') + '</small></div>' +
     '<div class="tsub">' + esc(t.s) + '</div>' + chip + '</div>' +
     '<div class="ringw"><svg viewBox="0 0 80 80" aria-hidden="true"><g transform="rotate(-90 40 40)">' +
     '<circle class="tr" cx="40" cy="40" r="34" stroke-width="6"/>' +
@@ -1434,7 +1446,7 @@ function donutHTML(items, center, sub, fmt){
     return '<circle class="ra" cx="60" cy="60" r="46" stroke-width="15" stroke="' + (x.c || PALC[i % PALC.length]) + '" pathLength="100" stroke-dasharray="' + len.toFixed(2) + ' 100" stroke-dashoffset="' + off.toFixed(2) + '" data-to="' + len.toFixed(2) + '"/>';
   }).join('');
   var lg = items.map(function(x, i){ var p = Math.max(0, x.v || 0) / tot;
-    return '<div style="--c:' + (x.c || PALC[i % PALC.length]) + '"><i></i><span title="' + esc(x.n) + '">' + esc(x.n) + '</span><b>' + (fmt || FMT.cr)(x.v || 0, x.v || 0) + '</b><em>' + nf0.format(Math.round(p * 100)) + '%</em></div>'; }).join('');
+    return '<div style="--c:' + (x.c || PALC[i % PALC.length]) + '"><i></i><span title="' + esc(x.n) + '">' + esc(x.n) + '</span><b>' + (fmt || FMT.cr)(x.v || 0, x.v || 0) + '</b><em>' + nf2.format(p * 100) + '%</em></div>'; }).join('');
   return '<div class="dn"><svg viewBox="0 0 120 120" aria-hidden="true"><g transform="rotate(-90 60 60)"><circle class="tr" cx="60" cy="60" r="46" stroke-width="15"/>' + arcs + '</g>' +
     '<text class="cn" x="60" y="62" text-anchor="middle">' + esc(center) + '</text><text class="cs" x="60" y="76" text-anchor="middle">' + esc(sub) + '</text></svg><div class="dl">' + lg + '</div></div>';
 }
@@ -1507,7 +1519,7 @@ function renderExt(key){
           .replace(/<\/article>$/, '<span class="golink">' + META[go].label + ' details <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></article>');
       }).join('') + '</section>' +
       '<section class="p2">' + panel('Order, delivery & collection by month (Cr)', legendHTML(EXTCH[0].series) + '<div class="chart" id="cOv"></div>', 'Bars = ' + F.year + ' · Lines = ' + PYR) +
-        panel('Sales volume by month (TON)', legendHTML(EXTCH[1].series) + '<div class="chart" id="cTon"></div>', 'Delivered ' + nf0.format(E.dton || 0) + ' TON') + '</section>' +
+        panel('Sales volume by month (TON)', legendHTML(EXTCH[1].series) + '<div class="chart" id="cTon"></div>', 'Delivered ' + nf2.format(E.dton || 0) + ' TON') + '</section>' +
       '<section class="p2 rev">' + panel('Conversion of orders', '<div class="rings">' + ring(r.del, 'var(--c2)', 'Delivery / Order', 'share of order value delivered') + ring(r.coll, 'var(--c4)', 'Collection / Order', 'share of order value collected') + '</div>') +
         panel('Key highlights', hlHTML(E.hl)) + '</section>' +
       '<p class="note" data-rise style="padding:0 10px">' + esc(E.foot) + '</p>' + footHTML();
@@ -1522,7 +1534,7 @@ function renderExt(key){
     return h + stripHTML(E, key, '<div class="k"><small>Grouping</small><b>Customer BU</b></div>') +
       '<section class="tiles auto">' + tiles + '</section>' +
       panel('Business unit summary', tableHTML([{h:'Business unit', k:'n', f:'name', dot:function(r, i){ return bc(r.n, i); }}, {h:'Order Cr', k:'o', f:'cr'}, {h:'Order growth', k:'og', f:'g'}, {h:'Delivery Cr', k:'d', f:'cr'},
-        {h:'Collection Cr', k:'c', f:'cr'}, {h:'Coll. growth', k:'cg', f:'g'}, {h:'Coll. / Order', k:'cr', f:'ratio'}, {h:'Order TON', k:'ton', f:'n0'}], rows, T)) +
+        {h:'Collection Cr', k:'c', f:'cr'}, {h:'Coll. growth', k:'cg', f:'g'}, {h:'Coll. / Order', k:'cr', f:'ratio'}, {h:'Order TON', k:'ton', f:'t2'}], rows, T)) +
       '<section class="p2">' + panel('Monthly order value by business unit (Cr)', legendHTML(mser) + '<div class="chart" id="cBu"></div>') +
         panel('Order mix by product segment', donutHTML(E.segs.map(function(s, i){ return {n:s.n, v:s.v, c:bc(s.n, i)}; }), FMT.cr0(T.o), 'CR ORDERS')) + '</section>' +
       insHTML(E.ins) + '<p class="note" data-rise style="padding:0 10px">' + esc(E.foot) + '</p>' + footHTML();
@@ -1544,21 +1556,21 @@ function renderExt(key){
     };
     var DY = E.days;
     var budTile = '<article class="glass card lift tile" data-rise style="--c:var(--good)"><h3><i></i><span>SALES BUDGET · FULL TARGET</span></h3><div class="val">' + num(E.bud, 'cr0') + '<small>Cr</small></div>' +
-      '<div class="tsub">' + esc(E.period) + ' · ' + nf0.format(E.ton.b) + ' TON</div><div class="rrl">' + (DY.closed ? 'Period ended' : '<b>' + DY.left + '</b> of ' + DY.total + ' working days left') + '</div></article>';
+      '<div class="tsub">' + esc(E.period) + ' · ' + nf2.format(E.ton.b) + ' TON</div><div class="rrl">' + (DY.closed ? 'Period ended' : '<b>' + DY.left + '</b> of ' + DY.total + ' working days left') + '</div></article>';
     var rrRows = E.kpis.map(function(k){ return {n:k.t.charAt(0) + k.t.slice(1).toLowerCase(), b:k.bud, a:k.act, ach:k.ach, rem:k.rem, days:k.rem == null ? null : DY.left, rr:k.rr}; });
-    var rrCols = [{h:'', k:'n', f:'name', dot:function(r, i){ return BC[i]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Actual Cr', k:'a', f:'cr'}, {h:'Ach.', k:'ach', f:'ach'}, {h:'Remaining Cr', k:'rem', f:'rem'}, {h:'Working days left', k:'days', f:'n0'}, {h:'Daily RR (Cr / day)', k:'rr', f:'rr'}];
+    var rrCols = [{h:'', k:'n', f:'name', dot:function(r, i){ return BC[i]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Actual Cr', k:'a', f:'cr'}, {h:'Ach.', k:'ach', f:'ach'}, {h:'Remaining Cr', k:'rem', f:'rem'}, {h:'Days left', k:'days', f:'n0'}, {h:'RR / day', k:'rr', f:'rr'}];
     var segCols = [{h:'Segment', k:'n', f:'name', dot:function(r, i){ return bc(r.n, i); }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, {h:'Remaining', k:'orem', f:'rem'}, {h:'Order RR / day', k:'orr', f:'rr'}, {h:'Delivery Cr', k:'d', f:'cr'}, {h:'Remaining', k:'drem', f:'rem'}, {h:'Delivery RR / day', k:'drr', f:'rr'}];
     var rrTot = function(rows){ var t = rows.reduce(function(a, x){ a.b += x.b || 0; a.o += x.o || 0; a.d += x.d || 0; a.orem += x.orem || 0; a.drem += x.drem || 0; return a; }, {n:'Total', b:0, o:0, d:0, orem:0, drem:0}); t.orr = DY.left > 0 ? t.orem / DY.left : (t.orem <= 0 ? 0 : null); t.drr = DY.left > 0 ? t.drem / DY.left : (t.drem <= 0 ? 0 : null); return t; };
     var mser = [{n:'Order', c:'var(--c1)', v:E.mon.order}, {n:'Delivery', c:'var(--c2)', v:E.mon.delivery}].concat(E.mon.collection ? [{n:'Collection', c:'var(--c4)', v:E.mon.collection}] : [], [{n:'Budget', c:'var(--good)', v:E.mon.budget, line:true}]);
     EXTCH.push({id:'cBud', series:mser, unit:'Cr'});
     var acol = function(k){ return {h:'Ach.', k:k, f:'ach'}; };
-    var tcols = function(first){ return [{h:first, k:'n', f:'name', dot:function(r, i){ return first === 'Segment' ? bc(r.n, i) : PALC[i % PALC.length]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, acol('oa'), {h:'Delivery Cr', k:'d', f:'cr'}, acol('da'), {h:'Gap Cr', k:'gap', f:'gap'}, {h:'Budget TON', k:'bt', f:'n0'}, {h:'Delivery TON', k:'dt', f:'n0'}, acol('ta')]; };
+    var tcols = function(first){ return [{h:first, k:'n', f:'name', dot:function(r, i){ return first === 'Segment' ? bc(r.n, i) : PALC[i % PALC.length]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, acol('oa'), {h:'Delivery Cr', k:'d', f:'cr'}, acol('da'), {h:'Gap Cr', k:'gap', f:'gap'}, {h:'Budget TON', k:'bt', f:'t2'}, {h:'Delivery TON', k:'dt', f:'t2'}, acol('ta')]; };
     var tot = function(rows){ var t = rows.reduce(function(a, x){ a.b += x.b || 0; a.o += x.o || 0; a.d += x.d || 0; a.bt += x.bt || 0; a.dt += x.dt || 0; return a; }, {n:'Total', b:0, o:0, d:0, bt:0, dt:0}); t.oa = t.b ? t.o / t.b : null; t.da = t.b ? t.d / t.b : null; t.gap = t.d - t.b; t.ta = t.bt ? t.dt / t.bt : null; return t; };
     return h + bn + '<section class="tiles four">' + budTile + E.kpis.map(achTile).join('') + '</section>' +
       '<section class="p2">' + panel('Budget vs order, delivery & collection by month (Cr)', legendHTML(mser) + '<div class="chart" id="cBud"></div>', 'Bars = actual · Line = budget') +
         panel('Volume vs budget (TON)', '<div class="rings">' + [['Order', E.ton.o, E.ton.oa, 'var(--c3)'], ['Delivery', E.ton.d, E.ton.da, 'var(--c5)']].map(function(x){ var p = Math.min(1, x[2] || 0) * 100;
           return '<div class="rg" style="--c:' + x[3] + '"><div class="ringw"><svg viewBox="0 0 80 80" aria-hidden="true"><g transform="rotate(-90 40 40)"><circle class="tr" cx="40" cy="40" r="34" stroke-width="7"/><circle class="ra" cx="40" cy="40" r="34" stroke-width="7" stroke="' + x[3] + '" pathLength="100" stroke-dasharray="' + p.toFixed(2) + ' 100" data-to="' + p.toFixed(2) + '"/></g></svg>' +
-            '<div class="rc ' + achCls(x[2]) + '">' + (x[2] == null ? 'n/a' : num(x[2], 'pc0')) + '</div></div><b>' + x[0] + ' TON</b><small>' + nf0.format(x[1]) + ' of ' + nf0.format(E.ton.b) + ' TON</small></div>'; }).join('') + '</div>') + '</section>' +
+            '<div class="rc ' + achCls(x[2]) + '">' + (x[2] == null ? 'n/a' : num(x[2], 'pc0')) + '</div></div><b>' + x[0] + ' TON</b><small>' + nf2.format(x[1]) + ' of ' + nf2.format(E.ton.b) + ' TON</small></div>'; }).join('') + '</div>') + '</section>' +
       '<section class="p2">' + panel('Remaining budget & daily required rate (RR)', tableHTML(rrCols, rrRows), DY.closed ? 'Period ended' : 'RR = remaining ÷ ' + DY.left + ' working days') +
         panel('How the days are counted', hlHTML([{k:'info', t:'Target: the full budget of ' + E.period + '.'}, {k:'info', t:'Data up to ' + DY.last + '.'},
           {k:DY.closed ? 'warn' : 'up', t:DY.closed ? 'The period has ended: no working days left.' : DY.left + ' of ' + DY.total + ' working days are left to the end of ' + DY.end + '.'},
@@ -1583,10 +1595,10 @@ function renderExt(key){
   }
   if (key === 'products') {
     return h + stripHTML(E, key, '<div class="k"><small>Ranking</small><b>By order value</b></div>') +
-      panel('Top 10 products by order value', tableHTML([{h:'Product', k:'n', f:'name', rank:true}, {h:'Order Cr', k:'v', f:'cr'}, {h:'Growth', k:'g', f:'g'}, {h:'TON', k:'ton', f:'n0'}, {h:'Share', k:'sh', f:'pc'}], E.top), 'Growth = like-for-like months') +
+      panel('Top 10 products by order value', tableHTML([{h:'Product', k:'n', f:'name', rank:true}, {h:'Order Cr', k:'v', f:'cr'}, {h:'Growth', k:'g', f:'g'}, {h:'TON', k:'ton', f:'t2'}, {h:'Share', k:'sh', f:'pc'}], E.top), 'Growth = like-for-like months') +
       '<section class="p2 even">' + panel('Top growth drivers (Cr)', E.up.length ? hbarHTML(E.up, {signed:true, c:'var(--good)'}) : '<div class="empty">Needs previous-year orders to rank growth.</div>', 'SKU groups') +
         panel('Top decliners (Cr)', E.dn.length ? hbarHTML(E.dn, {signed:true, c:'var(--bad)'}) : '<div class="empty">Needs previous-year orders to rank declines.</div>', 'SKU groups') + '</section>' +
-      '<section class="p2">' + panel('Product category performance', tableHTML([{h:'Category', k:'n', f:'name', dot:function(r, i){ return PALC[i % PALC.length]; }}, {h:'Order Cr', k:'v', f:'cr'}, {h:'Growth', k:'g', f:'g'}, {h:'TON', k:'ton', f:'n0'}, {h:'Share', k:'sh', f:'pc'}], E.cats)) +
+      '<section class="p2">' + panel('Product category performance', tableHTML([{h:'Category', k:'n', f:'name', dot:function(r, i){ return PALC[i % PALC.length]; }}, {h:'Order Cr', k:'v', f:'cr'}, {h:'Growth', k:'g', f:'g'}, {h:'TON', k:'ton', f:'t2'}, {h:'Share', k:'sh', f:'pc'}], E.cats)) +
         panel('Product insights', hlHTML(E.ins)) + '</section>' +
       '<p class="note" data-rise style="padding:0 10px">' + esc(E.foot) + '</p>' + footHTML();
   }
@@ -1594,16 +1606,16 @@ function renderExt(key){
     var old = (E.age || []).slice(3).reduce(function(s, x){ return s + (x.v || 0); }, 0);
     var tl = '<section class="tiles four">' +
       '<article class="glass card lift tile" data-rise style="--c:var(--gold)"><h3><i></i><span>PENDING DELIVERY VALUE</span></h3><div class="val">' + num(E.tot, 'cr') + '<small>Cr</small></div><div class="tsub">ordered, not yet delivered</div></article>' +
-      '<article class="glass card lift tile" data-rise style="--c:var(--c3)"><h3><i></i><span>PENDING VOLUME</span></h3><div class="val">' + num(E.ton, 'n0') + '<small>TON</small></div><div class="tsub">at TON_COV_FACTOR</div></article>' +
+      '<article class="glass card lift tile" data-rise style="--c:var(--c3)"><h3><i></i><span>PENDING VOLUME</span></h3><div class="val">' + num(E.ton, 't2') + '<small>TON</small></div><div class="tsub">at TON_COV_FACTOR</div></article>' +
       '<article class="glass card lift tile" data-rise style="--c:var(--c5)"><h3><i></i><span>OPEN ORDERS</span></h3><div class="val">' + num(E.orders, 'n0') + '</div><div class="tsub">' + nf0.format(E.dists || 0) + ' distributors waiting</div></article>' +
-      '<article class="glass card lift tile" data-rise style="--c:var(--bad)"><h3><i></i><span>AVERAGE AGE</span></h3><div class="val">' + num(E.avg, 'n0') + '<small>days</small></div><div class="tsub">' + FMT.cr(old, old) + ' Cr older than 30 days</div></article></section>';
+      '<article class="glass card lift tile" data-rise style="--c:var(--bad)"><h3><i></i><span>AVERAGE AGE</span></h3><div class="val">' + num(E.avg, 'd1') + '<small>days</small></div><div class="tsub">' + FMT.cr(old, old) + ' Cr older than 30 days</div></article></section>';
     var AC = ['var(--good)', 'var(--c2)', 'var(--c4)', 'var(--c1)', 'var(--bad)'];
     return h + stripHTML({info:E.info, period:'Open orders'}, key, '<div class="k"><small>Data up to</small><b>' + esc((E.title.split('as of ')[1]) || '') + '</b></div>') + tl +
       '<section class="p2 rev">' + panel('Pending by age', donutHTML(E.age.map(function(x, i){ return {n:x.n, v:x.v, c:AC[i]}; }), FMT.cr(E.tot, E.tot), 'CR PENDING')) +
-        panel('Pending by business unit', tableHTML([{h:'Business unit', k:'n', f:'name', dot:function(r, i){ return bc(r.n, i); }}, {h:'Pending Cr', k:'v', f:'cr'}, {h:'TON', k:'ton', f:'n0'}, {h:'Orders', k:'ord', f:'n0'}], E.bu,
+        panel('Pending by business unit', tableHTML([{h:'Business unit', k:'n', f:'name', dot:function(r, i){ return bc(r.n, i); }}, {h:'Pending Cr', k:'v', f:'cr'}, {h:'TON', k:'ton', f:'t2'}, {h:'Orders', k:'ord', f:'n0'}], E.bu,
           E.bu.reduce(function(a, x){ a.v += x.v || 0; a.ton += x.ton || 0; a.ord += x.ord || 0; return a; }, {n:'Total', v:0, ton:0, ord:0}))) + '</section>' +
       '<section class="p2 even">' + panel('Top distributors by pending delivery', tableHTML([{h:'Distributor', k:'n', f:'name', rank:true}, {h:'Pending Cr', k:'v', f:'cr'}, {h:'Orders', k:'ord', f:'n0'}, {h:'Oldest (days)', k:'age', f:'n0'}], E.dist)) +
-        panel('Top products waiting for delivery', tableHTML([{h:'Product', k:'n', f:'name', rank:true}, {h:'Pending Cr', k:'v', f:'cr'}, {h:'TON', k:'ton', f:'n0'}, {h:'Orders', k:'ord', f:'n0'}], E.sku)) + '</section>' +
+        panel('Top products waiting for delivery', tableHTML([{h:'Product', k:'n', f:'name', rank:true}, {h:'Pending Cr', k:'v', f:'cr'}, {h:'TON', k:'ton', f:'t2'}, {h:'Orders', k:'ord', f:'n0'}], E.sku)) + '</section>' +
       insHTML(E.ins) + '<p class="note" data-rise style="padding:0 10px">' + esc(E.foot) + '</p>' + footHTML();
   }
   return h + footHTML();
@@ -1644,7 +1656,7 @@ function drawGroup(cfg){
   });
   s += '</svg><div class="tip"></div>';
   host.innerHTML = s;
-  var tip = $('.tip', host), f = cfg.unit === 'TON' ? function(v){ return nf0.format(v) + ' TON'; } : function(v){ return nf1.format(v) + ' Cr'; };
+  var tip = $('.tip', host), f = cfg.unit === 'TON' ? function(v){ return nf2.format(v) + ' TON'; } : function(v){ return nf1.format(v) + ' Cr'; };
   $$('.hit', host).forEach(function(hh){
     function show(){
       var i = +hh.dataset.m, rows = cfg.series.filter(function(se){ return se.v && se.v[i] != null; });
@@ -1712,7 +1724,7 @@ function drawMonthly(key, animate){
     if (v == null) return;
     var h = ih - (y(v) - m.t);
     s += '<rect class="bar" data-bar data-i="' + i + '" x="' + (x(i) - bw / 2) + '" y="' + y(v) + '" width="' + bw + '" height="' + Math.max(0, h) + '" rx="4"/>';
-    if (bw >= String(Math.round(v)).length * 6.2 + 3 && h >= 20) s += '<text class="vl" x="' + x(i) + '" y="' + (m.t + ih - 7) + '" text-anchor="middle">' + nf0.format(v) + '</text>';
+    var vt = nf2.format(v); if (bw < vt.length * 6 + 3) vt = nf0.format(v); if (bw >= vt.length * 6 + 3 && h >= 20) s += '<text class="vl" x="' + x(i) + '" y="' + (m.t + ih - 7) + '" text-anchor="middle">' + vt + '</text>';
   });
   var segs = [], cur = [];
   D.mon.py.forEach(function(v, i){ if (v == null) { if (cur.length) segs.push(cur); cur = []; } else cur.push([x(i), y(v), i]); });
@@ -1754,6 +1766,7 @@ function leave(){
 function enter(){
   var rises = $$('[data-rise]', stage);
   rises.forEach(function(el, i){ el.__i = i; });
+  fitVals();
   $$('[data-count]', stage).forEach(function(el){ var h = el.closest('[data-rise]'); countUp(el, ((h && h.__i) || 0) * .055 + .25); });
   if (reduce || !stage.animate) return;
   var ease = 'cubic-bezier(.16,1,.3,1)';
@@ -1787,7 +1800,7 @@ function updateChrome(key){
   $$('i[data-g]', menu).forEach(function(i){
     var k = i.dataset.g, g;
     if (k === 'pending') { var P = DATA.ext.pending; i.className = 'na'; i.textContent = FMT.cr(P.tot, P.tot); return; }
-    if (k === 'budget') { var BV = DATA.ext.budget, a = BV && !BV.none ? BV.kpis[1].ach : null; i.className = a == null ? 'na' : (a >= 1 ? 'up' : (a >= .9 ? 'na' : 'down')); i.textContent = a == null ? 'n/a' : nf0.format(Math.round(a * 100)) + '%'; return; }
+    if (k === 'budget') { var BV = DATA.ext.budget, a = BV && !BV.none ? BV.kpis[1].ach : null; i.className = a == null ? 'na' : (a >= 1 ? 'up' : (a >= .9 ? 'na' : 'down')); i.textContent = a == null ? 'n/a' : nf2.format(a * 100) + '%'; return; }
     g = k === 'overview' ? DATA.ext.overview.kpis[0].g : DATA.views[k].tiles[0].g;
     i.className = g == null ? 'na' : (g >= 0 ? 'up' : 'down'); i.textContent = g == null ? 'n/a' : FMT.pct(g, g);
   });
@@ -2012,7 +2025,7 @@ pw.form.addEventListener('submit', function(e){
 /* ---------- data behind a number (drill-down) ---------- */
 var DRL = [], DRT = [], DS = null;
 var dr = {ov:$('#ovDr'), t:$('#drT'), s:$('#drS'), m:$('#drM'), q:$('#drQ'), w:$('#drW'), sum:$('#drSum'), n:$('#drN'), more:$('#drMore'), csv:$('#drCsv')};
-var nfT = new Intl.NumberFormat('en-US', {maximumFractionDigits:0}), nfN = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+var nfT = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}), nfN = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 function drillRows(spec){
   var X = IX, R = X.R, M = masks(), out = [];
   if (spec.k === 'P') {
@@ -2077,12 +2090,12 @@ function drillShow(reset){
   var isNum = function(i){ return i >= DS.nText || i === DS.numcol; };
   var h = '<table><thead><tr>' + DS.cols.map(function(n, i){ return '<th data-c="' + i + '" class="' + (isNum(i) ? 'num' : '') + '">' + esc(n) + (c === i ? '<i>' + (d > 0 ? '▲' : '▼') + '</i>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
   h += f.slice(0, DS.shown).map(function(e){
-    return '<tr>' + e.cells.map(function(v, i){ return '<td class="' + (isNum(i) ? 'num' : '') + '" title="' + esc(v) + '">' + esc(v) + '</td>'; }).join('') + '<td class="num">' + nfT.format(Math.round(e.a)) + '</td>' + (DS.hasT ? '<td class="num">' + nfN.format(e.t) + '</td>' : '') + '</tr>';
+    return '<tr>' + e.cells.map(function(v, i){ return '<td class="' + (isNum(i) ? 'num' : '') + '" title="' + esc(v) + '">' + esc(v) + '</td>'; }).join('') + '<td class="num">' + nfT.format(e.a) + '</td>' + (DS.hasT ? '<td class="num">' + nfN.format(e.t) + '</td>' : '') + '</tr>';
   }).join('');
-  h += '</tbody><tfoot><tr><td colspan="' + DS.nText + '">Total · ' + nf0.format(f.length) + ' row' + (f.length === 1 ? '' : 's') + '</td><td class="num">' + nfT.format(Math.round(ta)) + '</td>' + (DS.hasT ? '<td class="num">' + nfN.format(tt) + '</td>' : '') + '</tr></tfoot></table>';
+  h += '</tbody><tfoot><tr><td colspan="' + DS.nText + '">Total · ' + nf0.format(f.length) + ' row' + (f.length === 1 ? '' : 's') + '</td><td class="num">' + nfT.format(ta) + '</td>' + (DS.hasT ? '<td class="num">' + nfN.format(tt) + '</td>' : '') + '</tr></tfoot></table>';
   dr.w.innerHTML = f.length ? h : '<div class="empty">Nothing matches.</div>';
   if (reset) dr.w.scrollTop = 0;
-  dr.sum.innerHTML = 'Total <b>৳ ' + nfT.format(Math.round(ta)) + '</b> (' + nf2.format(ta / 1e7) + ' Cr)' + (DS.hasT ? ' · <b>' + nf0.format(Math.round(tt)) + '</b> TON' : '');
+  dr.sum.innerHTML = 'Total <b>৳ ' + nfT.format(ta) + '</b> (' + nf2.format(ta / 1e7) + ' Cr)' + (DS.hasT ? ' · <b>' + nf2.format(tt) + '</b> TON' : '');
   dr.n.textContent = 'Showing ' + nf0.format(Math.min(DS.shown, f.length)) + ' of ' + nf0.format(f.length) + ' rows';
   dr.more.style.display = f.length > DS.shown ? '' : 'none';
 }
@@ -2099,7 +2112,7 @@ function closeDrill(){ dr.ov.classList.remove('on'); }
 function drillCsv(){
   if (!DS) return;
   var q = function(v){ v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-  var lines = [DS.cols.map(q).join(',')].concat(DS.view.map(function(e){ return e.cells.map(q).concat([Math.round(e.a)], DS.hasT ? [e.t.toFixed(3)] : []).join(','); }));
+  var lines = [DS.cols.map(q).join(',')].concat(DS.view.map(function(e){ return e.cells.map(q).concat([e.a.toFixed(2)], DS.hasT ? [e.t.toFixed(2)] : []).join(','); }));
   try {
     var url = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'})), a = document.createElement('a');
     a.href = url; a.download = (DS.spec.title + ' ' + dr.s.textContent.split('  ·  ')[0]).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') + '.csv';
@@ -2224,7 +2237,7 @@ var rz, lastW = window.innerWidth; window.addEventListener('resize', function(){
   clearTimeout(rz);
   rz = setTimeout(function(){
     if (Math.abs(window.innerWidth - lastW) < 2) return; lastW = window.innerWidth; if (lastW > 900) closeNav();   // address bar show/hide changes height only
-    var b = $('.mi[aria-current]', menu); if (b) slidePill(b, false);
+    var b = $('.mi[aria-current]', menu); if (b) slidePill(b, false); fitVals();
     if (current && VIEWS.indexOf(current) > -1) drawMonthly(current);
     else if (current && ALL.indexOf(current) > -1) drawExt();
   }, 140);
