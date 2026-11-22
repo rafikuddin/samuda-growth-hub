@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Samuda Growth Hub</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.workers.dev https://script.google.com https://script.googleusercontent.com; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
@@ -623,13 +625,13 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '17-Nov-2026 · v38';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '22-Nov-2026 · v40';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
-/* Sign-in mode: put the link of the Cloudflare Worker (or of the Apps Script web app) in config.json  {"api":"https://....workers.dev"}
-   (or here). With a link the page asks for a user name and password and reads the data from Google.
-   Without one it reads the public data.json next to this page. */
+/* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
+   The page always asks for a user name and password and reads the data from Google after sign-in.
+   There is no public data file any more: without a link the page shows a message and stays locked. */
 var API_URL = '';
-var API = '', AUTH = false, TOKEN = null, USER = '', SCOPE = '', ADMIN = false;     // SCOPE: the BU / region / zone this user is limited to ('' = everything)
+var API = '', AUTH = false, TOKEN = null, USER = '', SCOPE = '', ADMIN = false;     // SCOPE: the BU / region / area this user is limited to ('' = everything)
 var reduce = false; try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){}
 var $ = function(s, r){ return (r||document).querySelector(s); };
 var $$ = function(s, r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); };
@@ -705,7 +707,7 @@ var MONL = ['January','February','March','April','May','June','July','August','S
 var MONS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 var CRD = 1e7;
 var RAW = null, IX = null;
-var F = {year:null, month:'auto', span:'ytd', bu:'', reg:'', ter:'', dist:'', cat:''};   // month: 'auto' or '1'..'12'; span: 'ytd' (January to that month) or 'mtd' (that month only)
+var F = {year:null, month:'auto', span:'ytd', day:'', bu:'', reg:'', ter:'', base:'', dist:'', cat:''};   // month: 'auto' or '1'..'12'; span: 'ytd' (January to that month) or 'mtd' (that month only)
 var LSF = 'samuda-growth-hub-filters';
 try { var sf = JSON.parse(localStorage.getItem(LSF)); if (sf && typeof sf === 'object') for (var fk in F) if (sf[fk] != null) F[fk] = sf[fk]; } catch(e){}
 (function(){      // filters saved by an older version of the page
@@ -713,6 +715,8 @@ try { var sf = JSON.parse(localStorage.getItem(LSF)); if (sf && typeof sf === 'o
   if (m.indexOf('ytd-') === 0) { F.month = m.slice(4); F.span = 'ytd'; } else if (m.indexOf('m-') === 0) { F.month = m.slice(2); F.span = 'mtd'; }
   if (F.month !== 'auto' && !(+F.month >= 1 && +F.month <= 12)) F.month = 'auto'; else if (F.month !== 'auto') F.month = String(+F.month);
   if (F.span !== 'mtd') F.span = 'ytd';
+  if (F.day !== '' && !(+F.day >= 1 && +F.day <= 31)) F.day = ''; else if (F.day !== '') F.day = String(+F.day);
+  F.base = String(F.base || '');
 })();
 function saveF(){ try { localStorage.setItem(LSF, JSON.stringify(F)); } catch(e){} }
 function validRaw(d){ try { return !!d && d.v >= 5 && (d.O.a.length > 0 || !!d.scope) && d.cust.length > 0 && d.sku.length > 0 && !!d.meta.order; } catch(e){ return false; } }
@@ -760,18 +764,19 @@ function prep(R){
 
 /* ---------- filters ---------- */
 function masks(){
-  var X = IX, R = X.R, n = R.cust.length, cm = new Uint8Array(n), sm = new Uint8Array(R.sku.length), cOn = !!(F.bu || F.reg || F.ter || F.dist);
+  var X = IX, R = X.R, n = R.cust.length, cm = new Uint8Array(n), sm = new Uint8Array(R.sku.length), cOn = !!(F.bu || F.reg || F.ter || F.base || F.dist);
   for (var i = 0; i < n; i++) {
     var c = R.cust[i], ok = 1;
-    if (cOn) ok = (!F.dist || c[0] === F.dist) && (!F.bu || (c[6] && c[2] === F.bu)) && (!F.reg || (c[6] && regName(c[3]) === F.reg)) && (!F.ter || (c[6] && c[4] === F.ter)) ? 1 : 0;
+    if (cOn) ok = (!F.dist || c[0] === F.dist) && (!F.bu || (c[6] && c[2] === F.bu)) && (!F.reg || (c[6] && regName(c[3]) === F.reg)) && (!F.ter || (c[6] && c[4] === F.ter)) && (!F.base || (c[6] && c[7] === F.base)) ? 1 : 0;
     cm[i] = ok;
   }
   for (var j = 0; j < sm.length; j++) sm[j] = !F.cat || R.sku[j][4] === F.cat ? 1 : 0;
-  return {c:cm, s:sm, cOn:cOn, sOn:!!F.cat, any:cOn || !!F.cat};
+  return {c:cm, s:sm, cOn:cOn, sOn:!!F.cat, day:F.day && X.daily ? +F.day : 0, any:cOn || !!F.cat || !!F.day};
 }
 function filterText(){
   var t = [];
-  if (F.bu) t.push(F.bu + ' BU'); if (F.reg) t.push(F.reg); if (F.ter) t.push(F.ter);
+  if (F.bu) t.push(F.bu + ' BU'); if (F.reg) t.push(F.reg); if (F.ter) t.push(F.ter); if (F.base) t.push(F.base + ' base');
+  if (F.day && IX.daily) t.push('Day ' + F.day);
   if (F.dist) { var c = IX.R.cust.filter(function(x){ return x[0] === F.dist; })[0]; t.push(c ? c[1] : F.dist); }
   if (F.cat) t.push(F.cat);
   return t.join('  ·  ');
@@ -808,7 +813,7 @@ function period(k, growthView){
   // same-date comparison: when the last month of the period is still running (data to the 15th, say),
   // last year is counted only up to the same day of that month. Needs day-wise data.
   var cut = null, T = IX.R[k], la = pd(IX.meta[k].lastAmt || IX.meta[k].lastAny);
-  if (T && T.dom && la && b > 0 && la.getFullYear() === Y && la.getMonth() + 1 === b && la.getDate() < new Date(Y, b, 0).getDate() && L[b]) cut = {m:b, day:la.getDate(), la:la};
+  if (T && T.dom && la && b > 0 && la.getFullYear() === Y && la.getMonth() + 1 === b && la.getDate() < new Date(Y, b, 0).getDate() && L[b] && !F.day) cut = {m:b, day:la.getDate(), la:la};
   return {P:P, L:L, a:a, b:b, pl:pl, ll:ll, Y:Y, same:pl.length === ll.length, cut:cut};
 }
 function ordinal(n){ var v = n % 100, s = ['th', 'st', 'nd', 'rd']; return n + (s[(v - 20) % 10] || s[v] || s[0]); }
@@ -816,11 +821,12 @@ function span(list, y){ if (!list.length) return ''; var a = MONS[list[0] - 1], 
 
 /* ---------- roll-up: one pass over a fact table ---------- */
 function roll(k, pr, keyOf, n, val, M){
-  var T = IX.R[k], ym = T.ym, cc = T.c, ss = T.s, vv = T[val || 'a'], len = ym.length, Y = pr.Y, cut = pr.cut, dom = T.dom, cm = cut ? cut.m : 0, cd = cut ? cut.day : 0;
+  var T = IX.R[k], ym = T.ym, cc = T.c, ss = T.s, vv = T[val || 'a'], len = ym.length, Y = pr.Y, cut = pr.cut, dom = T.dom, cm = cut ? cut.m : 0, cd = cut ? cut.day : 0, dayF = dom && M.day ? M.day : 0;
   var cy = new Float64Array(n), lc = new Float64Array(n), py = new Float64Array(n), mon = new Float64Array(13), pmon = new Float64Array(13);
   var div = val === 't' ? 1000 : CRD / IX.U, useS = !!ss && M.sOn;
   for (var i = 0; i < len; i++) {
     var c = cc[i]; if (!M.c[c]) continue;
+    if (dayF && dom[i] !== dayF) continue;
     if (useS && !M.s[ss[i]]) continue;
     var y = 2000 + ((ym[i] / 12) | 0), m = ym[i] % 12 + 1, v = vv[i] / div;
     if (y === Y) { mon[m] += v; if (pr.P[m]) { var key = keyOf(i, c, ss ? ss[i] : -1); if (key > -1) { cy[key] += v; if (pr.L[m]) lc[key] += v; } } }
@@ -843,7 +849,7 @@ function growthView(k, M){
   var lab = {O:['Order','order value','sales orders','SALES ORDER VALUE (TOTAL AMOUNT)','Monthly order value (Cr)','Order value = "Total Amount" of SALES_ORDER by Order Date, in Crore. Segments and SKU groups come from SKU_MASTER (Product Code = ERP_SKU_CODE). The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer (DOP excluded).','Order value up to '],
              D:['Delivery','delivery value','deliveries','DELIVERY VALUE (W/O DISCOUNT)','Monthly delivery value (Cr)','Delivery value = "Delivery Amount W/O Discount" of DELIVERY_ORDER ("Delivery Amount" where that column is empty, as in 2025) by Delivery Date, in Crore. Segments and SKU groups come from SKU_MASTER (Product Code = ERP_SKU_CODE). The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer (DOP excluded).','Delivery value up to '],
              C:['Collection','collection','collections','PRIMARY SALES COLLECTION','Monthly collection (Cr)','Collection = "Collection Amount" of PRIMARY_SALES_COLLECTION by Collection Date, in Crore. Business unit = BU of the customer in CUSTOMER_MASTER (Customer Code = Distributor Code). Top / Rest = customers of the Adhesive & Thinner BUs (DOP excluded). All collection types are counted, including commissions and bank charges.','Collection up to ']}[k];
-  var Mx = isC ? {c:M.c, s:M.s, sOn:false} : M;
+  var Mx = isC ? {c:M.c, s:M.s, sOn:false, day:M.day} : M;
   // groups: SKU groups (Order, Delivery) or customers in CUSTOMER_MASTER (Collection)
   var nG = isC ? R.cust.length : X.grp.length;
   var G = roll(k, pr, isC ? function(i, c){ return X.cIn[c] ? c : -1; } : function(i, c, s){ return X.sGrp[s]; }, nG, 'a', Mx);
@@ -935,7 +941,7 @@ function growthView(k, M){
 function extViews(M){
   var X = IX, R = X.R, Y = F.year;
   var pO = period('O', false), pD = period('D', false), pC = period('C', false);
-  var P = span(pO.pl, Y), Mc = {c:M.c, s:M.s, sOn:false};
+  var P = span(pO.pl, Y), Mc = {c:M.c, s:M.s, sOn:false, day:M.day};
   var one = function(){ return 0; };
   var O = roll('O', pO, one, 1, 'a', M), D = roll('D', pD, one, 1, 'a', M), C = roll('C', pC, one, 1, 'a', Mc);
   var OT = roll('O', pO, one, 1, 't', M), DT = roll('D', pD, one, 1, 't', M);
@@ -1083,7 +1089,7 @@ function budgetView(M){
   var pO = period('O', false), pD = period('D', false), pC = period('C', false), P = pO.P, b = pO.b, Pn = span(pO.pl, Y);
   var base = {title:'Budget vs Actual  ·  ' + Pn, sub:'SALES BUDGET  ·  ORDER · DELIVERY · COLLECTION' + (F.cat ? '  ·  FILTER: ' + F.cat : ''), cmp:'Achievement = actual ÷ budget  ·  Value in Crore', info:'', period:Pn, year:Y};
   var has = false; if (B && B.ym) for (var z = 0; z < B.ym.length; z++) if (2000 + ((B.ym[z] / 12) | 0) === Y) { has = true; break; }
-  if (R.scope) { base.none = true; base.msg = 'The sales budget is set for the whole company, not per business unit, region or zone, so this page is shown only to users with full access.'; return base; }
+  if (R.scope) { base.none = true; base.msg = 'The sales budget is set for the whole company, not per business unit, region or area, so this page is shown only to users with full access.'; return base; }
   if (!has) { base.none = true; base.msg = B && B.ym && B.ym.length ? 'There is no budget for ' + Y + ' in the data. Add the ' + Y + ' budget Sheet to the Sources tab, then update the data.' : 'No budget has been loaded yet. Add the budget Google Sheets to the Sources tab of the Admin Sheet, then run Dashboard → Update data now.'; return base; }
   // budget is per product, so customer filters cannot apply here; product category does
   var allC = new Uint8Array(R.cust.length); allC.fill(1);
@@ -1136,7 +1142,8 @@ function budgetView(M){
   var endTxt = MONL[b - 1] + ' ' + Y;
   notes.push(closed ? 'ℹ  This period has ended (data up to ' + fdate(last) + '), so there are no working days left and no daily required rate.'
     : 'ℹ  Data up to ' + fdate(last) + '  ·  ' + wLeft + ' working day' + (wLeft === 1 ? '' : 's') + ' left to the end of ' + endTxt + ' (' + (offTxt || 'no weekly day off') + (hLeft ? ' and ' + hLeft + ' holiday' + (hLeft === 1 ? '' : 's') : '') + ' not counted).');
-  if (M.cOn) notes.push('ℹ  The budget is set per product, so the Business Unit, Region, Territory and Distributor filters are not applied on this page.');
+  if (M.cOn) notes.push('ℹ  The budget is set per product, so the Business Unit, Region, Area, Base and Distributor filters are not applied on this page.');
+  if (F.day && IX.daily) notes.push('ℹ  The budget is set per month, so the Day filter is not applied on this page.');
   if (M.sOn) notes.push('ℹ  Collection is not recorded per product, so it is not shown for one product category.');
   var ins = [], pc = function(v){ return nf2.format(v * 100) + '%'; };
   kpis.forEach(function(k){ if (k.ach != null) ins.push({k:k.ach >= 1 ? 'up' : (k.ach >= .9 ? 'warn' : 'down'), l:k.ach >= 1 ? 'ON BUDGET' : 'BELOW BUDGET', t:k.t.charAt(0) + k.t.slice(1).toLowerCase() + ' is ' + pc(k.ach) + ' of budget: ' + nf1.format(k.act) + ' Cr against ' + nf1.format(k.bud) + ' Cr (' + (k.gap >= 0 ? '+' : '−') + nf1.format(Math.abs(k.gap)) + ' Cr).'}); });
@@ -1157,6 +1164,7 @@ function monthsFor(k, pr, custFn, M){
   var T = IX.R[k], a = new Float64Array(13), div = CRD / IX.U, Y = pr.Y;
   for (var i = 0; i < T.ym.length; i++) {
     var c = T.c[i]; if (!M.c[c] || !custFn(c)) continue;
+    if (M.day && T.dom && T.dom[i] !== M.day) continue;
     if (T.s && M.sOn && !M.s[T.s[i]]) continue;
     if (2000 + ((T.ym[i] / 12) | 0) === Y) a[T.ym[i] % 12 + 1] += T.a[i] / div;
   }
@@ -1339,6 +1347,9 @@ function filterLists(){
   L.ter = uniq(a.map(function(c){ return c[4]; }));
   if (F.ter && L.ter.indexOf(F.ter) < 0) F.ter = '';
   a = a.filter(function(c){ return !F.ter || c[4] === F.ter; });
+  L.base = uniq(a.map(function(c){ return c[7]; }));
+  if (F.base && L.base.indexOf(F.base) < 0) F.base = '';
+  a = a.filter(function(c){ return !F.base || c[7] === F.base; });
   L.dist = a.slice().sort(function(p, q){ return p[1].localeCompare(q[1]); });
   if (F.dist && !L.dist.some(function(c){ return c[0] === F.dist; })) F.dist = '';
   L.cat = uniq(IX.R.sku.map(function(x){ return x[4]; }));
@@ -1353,19 +1364,27 @@ function monthOptions(){
   for (var m = 1; m <= last; m++) h += opt(String(m), MONL[m - 1], F.month);
   return h;
 }
+function dayOptions(){
+  var max = 31; if (F.month !== 'auto') max = new Date(F.year, +F.month, 0).getDate();
+  if (F.day && +F.day > max) F.day = '';
+  var h = opt('', 'All', F.day);
+  for (var d = 1; d <= max; d++) h += opt(String(d), String(d), F.day);
+  return h;
+}
 function filterHTML(){
   if (!IX) return '';
-  var L = filterLists(), any = F.bu || F.reg || F.ter || F.dist || F.cat || F.month !== 'auto' || F.span !== 'ytd' || F.year !== IX.defYear;
+  var L = filterLists(), any = F.bu || F.reg || F.ter || F.base || F.day || F.dist || F.cat || F.month !== 'auto' || F.span !== 'ytd' || F.year !== IX.defYear;
   var sel = function(id, label, body, wide){ return '<label class="fl' + (wide ? ' wide' : '') + '"><span>' + label + '</span><select data-f="' + id + '"' + (F[id] && id !== 'year' && !(id === 'month' && F.month === 'auto') && !(id === 'span' && F.span === 'ytd') ? ' class="on"' : '') + '>' + body + '</select></label>'; };
   var all = function(list, cur){ return opt('', 'All', cur) + list.map(function(x){ return opt(x, x, cur); }).join(''); };
   var ml = (F.span === 'mtd' ? 'MTD ' : 'YTD ') + (F.month === 'auto' ? 'Auto' : MONS[+F.month - 1]);
-  var nAct = [F.bu, F.reg, F.ter, F.dist, F.cat].filter(Boolean).length, ft = filterText();
+  var nAct = [F.bu, F.reg, F.ter, F.base, F.day, F.dist, F.cat].filter(Boolean).length, ft = filterText();
   return '<div class="fbar glass' + (FOPEN ? ' open' : '') + '" id="fbar">' +
     '<button class="ftg" id="ftg" type="button" aria-expanded="' + FOPEN + '"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><b>Filters</b>' +
     (nAct ? '<i>' + nAct + '</i>' : '') + '<span>' + esc(F.year + ' · ' + ml + (ft ? ' · ' + ft.replace(/\s{2,}/g, ' ') : '')) + '</span><svg class="chv" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>' +
     sel('year', 'Year', IX.years.map(function(y){ return opt(y, y, F.year); }).join('')) + sel('month', 'Month', monthOptions()) +
     sel('span', 'Period', opt('ytd', 'YTD (Year to date)', F.span) + opt('mtd', 'MTD (Month to date)', F.span)) +
-    sel('bu', 'Business Unit', all(L.bu, F.bu)) + sel('reg', 'Region', all(L.reg, F.reg)) + sel('ter', 'Territory', all(L.ter, F.ter)) +
+    (IX.daily ? sel('day', 'Day', dayOptions()) : '') +
+    sel('bu', 'Business Unit', all(L.bu, F.bu)) + sel('reg', 'Region', all(L.reg, F.reg)) + sel('ter', 'Area', all(L.ter, F.ter)) + (L.base.length ? sel('base', 'Base', all(L.base, F.base)) : '') +
     cbHTML(L) +
     sel('cat', 'Product Category', all(L.cat, F.cat)) +
     '<button class="frs" id="frs" type="button"' + (any ? '' : ' disabled') + '>Reset</button></div>';
@@ -1416,7 +1435,7 @@ function wireFilters(){
     var k = el.dataset.f; F[k] = k === 'year' ? +el.value : el.value;
     applyFilters(k);
   }); });
-  var r = $('#frs', stage); if (r) r.addEventListener('click', function(){ F.year = IX.defYear; F.month = 'auto'; F.span = 'ytd'; F.bu = F.reg = F.ter = F.dist = F.cat = ''; applyFilters(); });
+  var r = $('#frs', stage); if (r) r.addEventListener('click', function(){ F.year = IX.defYear; F.month = 'auto'; F.span = 'ytd'; F.bu = F.reg = F.ter = F.base = F.day = F.dist = F.cat = ''; applyFilters(); });
 }
 function applyFilters(focus){
   saveF(); DATA = compute();
@@ -1531,8 +1550,8 @@ function renderExt(key){
         '<div class="rc up">' + (v == null ? 'n/a' : num(v, 'pc0')) + '</div></div><b>' + esc(t) + '</b><small>' + esc(s) + '</small></div>'; };
     var PYR = F.year - 1;
     // Order / Budget: the budget is one company figure per product, so it is shown only while no customer filter is on
-    var BV = DATA.ext.budget, cf = !!(F.bu || F.reg || F.ter || F.dist), BO = BV && !BV.none && !cf ? BV.kpis[0].ach : null;
-    var BOs = BO != null ? 'order ' + nf2.format(BV.kpis[0].act) + ' of ' + nf2.format(BV.kpis[0].bud) + ' Cr budget' : (cf && BV && !BV.none ? 'budget is company-wide: clear the BU / region / territory / distributor filter' : 'no budget for this view');
+    var BV = DATA.ext.budget, cf = !!(F.bu || F.reg || F.ter || F.base || F.dist), BO = BV && !BV.none && !cf ? BV.kpis[0].ach : null;
+    var BOs = BO != null ? 'order ' + nf2.format(BV.kpis[0].act) + ' of ' + nf2.format(BV.kpis[0].bud) + ' Cr budget' : (cf && BV && !BV.none ? 'budget is company-wide: clear the BU / region / area / base / distributor filter' : 'no budget for this view');
     EXTCH.push({id:'cOv', series:[{n:'Order', c:'var(--c1)', v:E.mon.order}, {n:'Delivery', c:'var(--c2)', v:E.mon.delivery}, {n:'Collection', c:'var(--c4)', v:E.mon.collection},
       {n:'Order ' + PYR, c:'var(--c1)', v:E.mon.orderPY, line:true}, {n:'Delivery ' + PYR, c:'var(--c2)', v:E.mon.deliveryPY, line:true}, {n:'Collection ' + PYR, c:'var(--c4)', v:E.mon.collectionPY, line:true}]
       .filter(function(se){ return se.v && se.v.some(function(v){ return v != null; }); }), unit:'Cr'});
@@ -1946,7 +1965,7 @@ function loadApi(){
     return afterLoad(st === 'ok');
   });
 }
-function loadGitHub(){ return AUTH ? loadApi() : loadFile(); }
+function loadGitHub(){ return AUTH ? loadApi() : Promise.resolve(false); }
 
 /* ---------- sign-in screen ---------- */
 var lg = {ov:$('#login'), card:$('#lgc'), form:$('#lgform'), u:$('#lgu'), p:$('#lgp'), eye:$('#lgeye'), keep:$('#lgkeep'), btn:$('#lgb'), bt:$('#lgbt'), msg:$('#lgm'), msc:$('#msc'), mouth:$('#mMouth'), wt:$('#lgwt')};
@@ -2072,8 +2091,8 @@ function usDraw(){
         '<label>Full name<input type="text" id="usn" maxlength="60" placeholder="Karim Ahmed"></label>' +
         '<label class="w2">Password (at least 8 characters)<span class="pg"><input type="text" id="usp" maxlength="200" spellcheck="false" autocomplete="off"><button class="btn alt" id="usg" type="button">Generate</button></span></label>' +
         '<label>BU<input type="text" id="usbu" list="dlbu" placeholder="empty = all"></label><label>Region<input type="text" id="usrg" list="dlrg" placeholder="empty = whole BU"></label>' +
-        '<label>Zone<input type="text" id="uszn" list="dlzn" placeholder="empty = whole region"></label><label class="ck"><input type="checkbox" id="usad"> Admin (may manage users)</label>' +
-        '<p class="hint">Empty BU, Region and Zone = sees everything. BU only = that BU. BU + Region = that region. BU + Region + Zone = that zone. Give the user name and password to the person; they can change the password after signing in.</p>' +
+        '<label>Area<input type="text" id="uszn" list="dlzn" placeholder="empty = whole region"></label><label class="ck"><input type="checkbox" id="usad"> Admin (may manage users)</label>' +
+        '<p class="hint">Empty BU, Region and Area = sees everything. BU only = that BU. BU + Region = that region. BU + Region + Area = that area. Give the user name and password to the person; they can change the password after signing in.</p>' +
         '<div class="w2"><button class="btn" type="submit"' + (us.busy ? ' disabled' : '') + '>Save user</button></div>' +
         (IX ? dl('dlbu', IX.bu) + dl('dlrg', IX.reg) + dl('dlzn', IX.ter) : '') + '</form>';
     }
@@ -2099,8 +2118,8 @@ function usDraw(){
       var v = {user:$('#usu').value.trim().toLowerCase(), name:$('#usn').value.trim(), pass:$('#usp').value, bu:$('#usbu').value.trim(), reg:$('#usrg').value.trim(), zone:$('#uszn').value.trim(), admin:$('#usad').checked};
       if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(v.user)) { usSay('User name: 3 to 30 letters, numbers, dot, dash or underscore (no spaces).'); $('#usu').focus(); return; }
       if (v.pass.length < 8) { usSay('The password needs at least 8 characters.'); $('#usp').focus(); return; }
-      if (!v.bu && (v.reg || v.zone)) { usSay('Choose the BU first, then the region and the zone.'); $('#usbu').focus(); return; }
-      if (!v.reg && v.zone) { usSay('Choose the region before the zone.'); $('#usrg').focus(); return; }
+      if (!v.bu && (v.reg || v.zone)) { usSay('Choose the BU first, then the region and the area.'); $('#usbu').focus(); return; }
+      if (!v.reg && v.zone) { usSay('Choose the region before the area.'); $('#usrg').focus(); return; }
       v.action = 'useradd';
       usCall(v, function(){ us.add = false; return 'User ' + v.user + ' added. Password: ' + v.pass + '  (write it down now, it is not shown again)'; }, f);
     });
@@ -2154,6 +2173,7 @@ function drillRows(spec){
   var T = R[spec.k], pr = period(spec.k, !!spec.growth), hs = !!T.s;
   for (var i = 0; i < T.ym.length; i++) {
     var c = T.c[i]; if (!M.c[c]) continue;
+    if (M.day && T.dom && T.dom[i] !== M.day) continue;
     var s = hs ? T.s[i] : -1; if (hs && M.sOn && !M.s[s]) continue;
     var y = 2000 + ((T.ym[i] / 12) | 0), m = T.ym[i] % 12 + 1; if (y !== pr.Y || !pr.P[m]) continue;
     if (spec.pred && !spec.pred(c, s)) continue;
@@ -2164,7 +2184,7 @@ function drillRows(spec){
 /* each way of showing the rows: key to group by + the text columns */
 var DMODES = {
   dp:  {n:'Distributor × Product', key:function(r){ return r.c + '|' + r.s; }, cols:['Distributor', 'Code', 'BU', 'Region', 'Product', 'Category'], cell:function(r, C, S){ return [C[1], C[0], C[2], regName(C[3]), S[1], S[4]]; }},
-  d:   {n:'Distributor', key:function(r){ return r.c; }, cols:['Distributor', 'Code', 'BU', 'Region', 'Territory'], cell:function(r, C){ return [C[1], C[0], C[2], regName(C[3]), C[4]]; }},
+  d:   {n:'Distributor', key:function(r){ return r.c; }, cols:['Distributor', 'Code', 'BU', 'Region', 'Area', 'Base'], cell:function(r, C){ return [C[1], C[0], C[2], regName(C[3]), C[4], C[7] || '']; }},
   p:   {n:'Product', key:function(r){ return r.s; }, cols:['Product', 'Code', 'Segment', 'Category'], cell:function(r, C, S){ return [S[1], S[0], S[2], S[4]]; }},
   m:   {n:'Month', key:function(r){ return r.ym; }, cols:['Month'], cell:function(r){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0))]; }, sort:'key'},
   md:  {n:'Month × Distributor', key:function(r){ return r.ym + '|' + r.c; }, cols:['Month', 'Distributor', 'Code', 'BU', 'Region'], cell:function(r, C){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), C[1], C[0], C[2], regName(C[3])]; }},
@@ -2288,11 +2308,15 @@ function toast(t){
 function startWatch(){ if (VERT) return; VERT = setInterval(checkNew, 5 * 60 * 1000); document.addEventListener('visibilitychange', function(){ if (!document.hidden) checkNew(); }); }
 function boot(){
   var cfg;
-  try { cfg = fetch('config.json?t=' + Date.now(), {cache:'no-store'}).then(function(r){ return r.ok ? r.json() : {}; }).catch(function(){ return {}; }); } catch(e){ cfg = Promise.resolve({}); }
-  cfg.then(function(c){
-    API = String((c && c.api) || API_URL || '').trim();
+  try { cfg = fetch('config.json?t=' + Date.now(), {cache:'no-store'}).then(function(r){ if (!r.ok) throw new Error('http ' + r.status); return r.json(); }); } catch(e){ cfg = Promise.reject(e); }
+  cfg.then(function(c){ return c || {}; }, function(){ return null; }).then(function(c){
+    API = c ? String(c.api || API_URL || '').trim() : '';
     AUTH = /^https:\/\/[^\/\s]+\//.test(API + '/');        // an Apps Script link or a Cloudflare Worker link
-    if (!AUTH) { loadFile(); return; }
+    if (!AUTH) {                                           // never fall back to a public data file: stay locked and say why
+      showLogin(c === null ? 'The dashboard could not read its settings (config.json). Check your internet connection and reload the page.' : 'The dashboard is not connected to its data service yet. Ask the administrator to put the service link into config.json.');
+      lg.btn.disabled = true; lg.u.disabled = true; lg.p.disabled = true;
+      return;
+    }
     startWatch();
     TOKEN = getTok();
     if (!TOKEN) { showLogin(); return; }
