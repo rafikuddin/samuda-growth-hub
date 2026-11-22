@@ -629,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '23-Nov-2026 · v45';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '23-Nov-2026 · v46';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -886,7 +886,9 @@ function growthView(k, M){
   var G = roll(k, pr, isC ? function(i, c){ return X.cIn[c] ? c : -1; } : function(i, c, s){ return X.sGrp[s]; }, nG, 'a', Mx);
   var N = roll(k, pr, function(){ return 0; }, 1, 'a', Mx);
   var gSeg = function(g){ return isC ? R.cust[g][2] : X.seg[X.grpSeg[g]]; };
-  var inScope = function(g){ var s = gSeg(g); return s && s !== 'DOP'; };
+  var fb = F.bu && (!isC || !prodBU()) ? F.bu : '';          // the Business Unit filter, when it applies to this page
+  var inScope = function(g){ var s = gSeg(g); return s && (s !== 'DOP' || fb === 'DOP'); };
+  var scopeLab = fb ? fb : 'Adhesive & Thinner';
   var natCY = N.cy[0], natLC = N.lc[0], natPY = N.py[0];
   var basisPY = natPY > 0;
   var ids = []; for (var g = 0; g < nG; g++) if (inScope(g) && (G.cy[g] || G.py[g] || G.lc[g])) ids.push(g);
@@ -903,24 +905,28 @@ function growthView(k, M){
     return {t:t, cy:r4(o.cy), py:r4(o.py), lcy:pr.same ? null : r4(o.lc), g:hasPY ? r4(o.lc / o.py - 1) : null, d:hasPY ? r4(o.lc - o.py) : null,
       s:hasPY ? 'vs ' + fcr(o.py) + ' Cr in ' + (Y - 1) + (pr.same ? '' : ' (' + span(pr.ll) + ')') : 'no ' + (Y - 1) + ' data in period'};
   }
-  var natT = (M.any ? 'FILTERED TOTAL' : 'NATIONAL TOTAL') + (isC ? ' · ALL BUSINESS UNITS' : ' · ALL SEGMENTS'), pct = Math.round(thr * 100), rp = 100 - pct;
+  var natT = (M.any ? 'FILTERED TOTAL' : 'NATIONAL TOTAL') + (fb ? ' · ' + fb.toUpperCase() + (isC ? ' BU' : '') : (isC ? ' · ALL BUSINESS UNITS' : ' · ALL SEGMENTS')), pct = Math.round(thr * 100), rp = 100 - pct;
   var nat = {cy:natCY, lc:natLC, py:natPY};
   var tiles, segs;
   // segments
   var S = isC ? roll(k, pr, function(i, c){ return X.cIn[c] ? X.cBu[c] : -1; }, X.bu.length, 'a', Mx) : roll(k, pr, function(i, c, s){ return X.sSeg[s]; }, X.seg.length, 'a', Mx);
   function segO(name){ var i = (isC ? X.bu : X.seg).indexOf(name); return i < 0 ? {cy:0, lc:0, py:0} : {cy:S.cy[i], lc:S.lc[i], py:S.py[i]}; }
-  function segRow(n, o){ return {n:n, cy:r4(o.cy), py:r4(o.py), g:o.py > 1e-7 ? r4(o.lc / o.py - 1) : null}; }
+  function segRow(n, o, ci){ return {n:n, ci:ci, cy:r4(o.cy), py:r4(o.py), g:o.py > 1e-7 ? r4(o.lc / o.py - 1) : null}; }
   if (isC) {
     var dop = segO('DOP');
-    tiles = [tile(natT, nat), tile('ADHESIVE & THINNER BU', at), tile('TOP ' + pct + '% CUSTOMERS', tp), tile('REST ' + rp + '% CUSTOMERS', rest), tile('DOP BU', dop)];
+    tiles = fb ? [tile(natT, nat), tile(fb.toUpperCase() + ' BU', at), tile('TOP ' + pct + '% ' + fb.toUpperCase() + ' CUSTOMERS', tp), tile('REST ' + rp + '% ' + fb.toUpperCase() + ' CUSTOMERS', rest)]
+      : [tile(natT, nat), tile('ADHESIVE & THINNER BU', at), tile('TOP ' + pct + '% CUSTOMERS', tp), tile('REST ' + rp + '% CUSTOMERS', rest), tile('DOP BU', dop)];
     var four = ['Adhesive', 'Thinner', 'DOP', 'Trading-HO'], o4 = four.map(segO);
     var nm = {cy:natCY, lc:natLC, py:natPY}; o4.forEach(function(o){ nm.cy -= o.cy; nm.lc -= o.lc; nm.py -= o.py; });
-    segs = four.map(function(n, i){ return segRow(n, o4[i]); }).concat([segRow('Not in CUSTOMER_MASTER', {cy:Math.max(0, nm.cy), lc:Math.max(0, nm.lc), py:Math.max(0, nm.py)})]);
+    segs = four.map(function(n, i){ return segRow(n, o4[i], i); }).concat([segRow('Not in CUSTOMER_MASTER', {cy:Math.max(0, nm.cy), lc:Math.max(0, nm.lc), py:Math.max(0, nm.py)}, 4)]);
+    if (fb) segs = segs.filter(function(r){ return r.n === fb; });
   } else {
-    tiles = [tile(natT, nat), tile('ADHESIVE & THINNER', at), tile('TOP ' + pct + '% PRODUCTS', tp), tile('TOP ' + pct + '% · EX RUBBER ADHESIVE', tpx), tile('REST ' + rp + '% PRODUCTS', rest)];
+    var exRub = !fb || fb === 'Adhesive';
+    tiles = [tile(natT, nat), tile(scopeLab.toUpperCase(), at), tile('TOP ' + pct + '% PRODUCTS', tp)].concat(exRub ? [tile('TOP ' + pct + '% · EX RUBBER ADHESIVE', tpx)] : [], [tile('REST ' + rp + '% PRODUCTS', rest)]);
     var adh = segO('Adhesive'), rub = grpSum(function(g){ return X.grpRub[g]; });
-    segs = [segRow('Wood Lacquer', segO('Wood Lacquer')), segRow('Thinner', segO('Thinner')), segRow('DOP', segO('DOP')), segRow('Adhesive', adh),
-      segRow('Adhesive without Rubber Adhesive', {cy:adh.cy - rub.cy, lc:adh.lc - rub.lc, py:adh.py - rub.py})];
+    segs = [segRow('Wood Lacquer', segO('Wood Lacquer'), 0), segRow('Thinner', segO('Thinner'), 1), segRow('DOP', segO('DOP'), 2), segRow('Adhesive', adh, 3),
+      segRow('Adhesive without Rubber Adhesive', {cy:adh.cy - rub.cy, lc:adh.lc - rub.lc, py:adh.py - rub.py}, 4)];
+    if (fb) segs = segs.filter(function(r){ return r.n === fb || (fb === 'Adhesive' && r.ci === 4); });
   }
   // movers (change on like-for-like months)
   var mov = [];
@@ -955,17 +961,17 @@ function growthView(k, M){
   ins.push({k:'OVERALL', t:gNat != null ? (M.any ? 'Filtered' : 'National') + ' ' + lab[1] + ' ' + (gNat >= 0 ? 'grew' : 'declined') + ' by ' + p0(gNat) + ' to ' + fcr(pr.same ? natCY : natLC) + ' Cr vs ' + fcr(natPY) + ' Cr in ' + (Y - 1) + ' (' + span(pr.ll, Y) + ').'
     : (M.any ? 'Filtered' : 'National') + ' ' + lab[1] + ' is ' + fcr(natCY) + ' Cr (' + pcy + '). No ' + (Y - 1) + ' ' + lab[2] + ' in the period to compare yet.'});
   var gt = tp.py > 0 ? tp.lc / tp.py - 1 : null, gR = rest.py > 0 ? rest.lc / rest.py - 1 : null;
-  ins.push({k:'TOP ' + pct + '% ' + scope.toUpperCase(), t:gt != null ? 'Top ' + pct + '% contributing ' + scope + ' ' + (gt >= 0 ? 'grew' : 'declined') + ' by ' + p0(gt) + ' (Adhesive & Thinner).' : 'Top ' + pct + '% contributing ' + scope + ' delivered ' + fcr(tp.cy) + ' Cr (Adhesive & Thinner).'});
+  ins.push({k:'TOP ' + pct + '% ' + scope.toUpperCase(), t:gt != null ? 'Top ' + pct + '% contributing ' + scope + ' ' + (gt >= 0 ? 'grew' : 'declined') + ' by ' + p0(gt) + ' (' + scopeLab + ').' : 'Top ' + pct + '% contributing ' + scope + ' delivered ' + fcr(tp.cy) + ' Cr (' + scopeLab + ').'});
   ins.push({k:'LONG TAIL · REST ' + rp + '%', t:gR != null ? 'Rest ' + rp + '% ' + scope + ' ' + (gR >= 0 ? 'grew' : 'declined') + ' by ' + p0(gR) + (gR >= 0 ? ', indicating broader based growth.' : ', a weaker tail of ' + scope + '.') : 'Rest ' + rp + '% ' + scope + ' contributed ' + fcr(rest.cy) + ' Cr.'});
   ins.push({k:'FOCUS', t:'Focus on recovering declining ' + (isC ? 'customers' : 'SKUs') + (dec[0] ? ' (largest drag: ' + gname(dec[0][0]) + ', ' + nf1.format(dec[0][1]) + ' Cr)' : '') + ' and sustaining growth momentum in high performing ' + scope + '.'});
   return {title:'Business Growth Status  ·  ' + (pr.a === 1 && pr.pl.length > 1 ? 'Till ' + MONL[pr.b - 1] + ' ' + Y : pcy),
     sub:'ADHESIVE & GLUE DIVISION  ·  ' + lab[3] + (ft ? '  ·  FILTER: ' + ft : ''),
     cmp:'Compared with ' + pyl + '  ·  Value in Crore (1 Cr = 10,000,000 BDT)',
     info:lab[6] + fdate(la || lany) + (k === 'O' && lany > la ? '   ·   rows up to ' + fdate(lany) + ' have no amount' : ''),
-    banner:ban.join('  '), year:Y, pyear:Y - 1, pcy:pcy, ppy:pyl, segh:isC ? 'BUSINESS UNIT' : 'SEGMENT', chart:lab[4], foot:lab[5],
+    banner:ban.join('  '), year:Y, pyear:Y - 1, pcy:pcy, ppy:pyl, segh:isC ? 'BUSINESS UNIT' : 'SEGMENT', chart:lab[4], foot:fb ? lab[5].replace(/ Top \/ Rest = customers of the Adhesive & Thinner BUs \(DOP excluded\)\./, ' Top / Rest = customers of the ' + fb + ' BU only (BU filter).').replace(/ The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer \(DOP excluded\)\./, ' With the BU filter every tile covers ' + fb + ' only.') : lab[5],
     items:scope, view:lab[0], tiles:tiles, segs:segs, mov:mov, mon:mon, ins:ins,
-    sel:isC ? [null, function(c){ return X.cIn[c] && inScope(c); }, function(c){ return X.cIn[c] && !!top[c]; }, function(c){ return X.cIn[c] && inScope(c) && !top[c]; }, function(c){ return X.cIn[c] && R.cust[c][2] === 'DOP'; }]
-              : [null, function(c, s){ var g = X.sGrp[s]; return g > -1 && inScope(g); }, function(c, s){ return !!top[X.sGrp[s]]; }, function(c, s){ var g = X.sGrp[s]; return !!top[g] && !X.grpRub[g]; }, function(c, s){ var g = X.sGrp[s]; return g > -1 && inScope(g) && !top[g]; }]};
+    sel:isC ? [null, function(c){ return X.cIn[c] && inScope(c); }, function(c){ return X.cIn[c] && !!top[c]; }, function(c){ return X.cIn[c] && inScope(c) && !top[c]; }, function(c){ return X.cIn[c] && R.cust[c][2] === 'DOP'; }].slice(0, tiles.length)
+              : [null, function(c, s){ var g = X.sGrp[s]; return g > -1 && inScope(g); }, function(c, s){ return !!top[X.sGrp[s]]; }].concat(exRub ? [function(c, s){ var g = X.sGrp[s]; return !!top[g] && !X.grpRub[g]; }] : [], [function(c, s){ var g = X.sGrp[s]; return g > -1 && inScope(g) && !top[g]; }])};
 }
 
 /* ---------- Overview, Business units, Regions, Products, Pending ---------- */
@@ -1275,6 +1281,7 @@ function tileHTML(t, i, M, flat){
 function segHTML(D, M){
   var max = Math.max.apply(null, D.segs.map(function(s){ return s.cy || 0; })) || 1;
   var rows = D.segs.map(function(s, i){
+    i = s.ci != null ? s.ci : i;
     return '<div class="srow" data-rise><span class="nm" style="--c:var(--c' + M.seg[i] + ')"><i></i><span title="' + esc(s.n) + '">' + esc(s.n) + '</span></span>' +
       '<span class="cy" style="--c:var(--c' + M.seg[i] + ')"><b class="bar" data-bar style="width:' + (100 * (s.cy || 0) / max).toFixed(1) + '%"></b><em data-count="' + s.cy + '" data-f="d1">' + FMT.d1(s.cy || 0) + '</em></span>' +
       '<span class="py">' + (s.py > 0 ? FMT.d1(s.py) : '–') + '</span>' + chipHTML(s.g) + '</div>';
@@ -1347,7 +1354,7 @@ function renderView(key){
   var segb = VIEWS.map(function(k){ return '<button type="button" data-go="' + k + '" aria-pressed="' + (k === key) + '">' + META[k].label + '</button>'; }).join('');
   return headHTML(D) +
     ban +
-    '<section class="tiles">' + D.tiles.map(function(t, i){ return tileHTML(t, i, M); }).join('') + '</section>' +
+    '<section class="tiles' + (D.tiles.length === 4 ? ' four' : '') + '">' + D.tiles.map(function(t, i){ return tileHTML(t, i, M); }).join('') + '</section>' +
     '<section class="panels">' + segHTML(D, M) + monthlyHTML(D) + moversHTML(D, key) + '</section>' +
     '<section class="ins">' + D.ins.map(function(c, i){ return '<article class="glass card lift ic" data-rise style="--kc:' + KC[i] + '"><div class="k"><i></i>' + esc(c.k) + '</div><p>' + esc(c.t) + '</p></article>'; }).join('') + '</section>' +
     footHTML();
