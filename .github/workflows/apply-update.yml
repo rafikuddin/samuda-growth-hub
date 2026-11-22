@@ -1,0 +1,93 @@
+# Samuda Growth Hub - update the page by uploading ONE file.
+# Upload "update.zip" to the repository (Add file > Upload files). This workflow unpacks it, replaces index.html
+# (and README.md if it is in the zip), deletes update.zip and publishes the page. Nothing else is touched:
+# config.json (your service link) and the .github folder are never changed by a zip.
+name: Apply update.zip
+
+on:
+  push:
+    branches: [main]
+    paths: ['update.zip']
+  workflow_dispatch:
+
+permissions:
+  contents: write     # to replace the files and delete update.zip
+  actions: write      # to start "Publish dashboard" afterwards (a commit made here does not start it by itself)
+
+concurrency:
+  group: apply-update
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack update.zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ ! -f update.zip ]; then echo "No update.zip in the repository - nothing to do."; exit 0; fi
+          python3 - <<'PY'
+          import os, re, sys, zipfile
+
+          ALLOWED = {'index.html', 'README.md'}        # the only files a zip may change
+          MAX = 5 * 1024 * 1024
+
+          def fail(msg):
+              print('::error::' + msg)
+              sys.exit(1)
+
+          try:
+              z = zipfile.ZipFile('update.zip')
+          except zipfile.BadZipFile:
+              fail('update.zip is not a valid zip file. Make a new zip and upload it again.')
+          names = z.namelist()
+          for n in names:
+              if n.startswith('/') or '\\' in n or '..' in n.split('/'):
+                  fail('update.zip has an unsafe file name (' + n + '). Nothing was changed.')
+          files = [n for n in names if not n.endswith('/')]
+          if not files:
+              fail('update.zip is empty.')
+          tops = {n.split('/')[0] for n in files}
+          prefix = ''
+          if len(tops) == 1 and all('/' in n for n in files):      # a zip downloaded from GitHub has one folder around everything
+              prefix = tops.pop() + '/'
+          picked, skipped = {}, []
+          for n in files:
+              rel = n[len(prefix):] if n.startswith(prefix) else n
+              if rel in ALLOWED:
+                  picked[rel] = n
+              else:
+                  skipped.append(rel)
+          for s in skipped:
+              print('::notice::Skipped ' + s + ' (a zip can only update ' + ', '.join(sorted(ALLOWED)) + ').')
+          if 'index.html' not in picked:
+              fail('update.zip has no index.html. Nothing was changed.')
+          data = {}
+          for rel, n in picked.items():
+              if z.getinfo(n).file_size > MAX:
+                  fail(rel + ' is larger than 5 MB.')
+              data[rel] = z.read(n)
+          html = data['index.html'].decode('utf-8', 'replace')
+          m = re.search(r"PAGE_VERSION\s*=\s*'([^']+)'", html)
+          if not m or '<title>' not in html:
+              fail('index.html in update.zip is not the Growth Hub page. Nothing was changed.')
+          for rel, b in data.items():
+              with open(rel, 'wb') as f:
+                  f.write(b)
+          with open('/tmp/page_ver.txt', 'w', encoding='utf-8') as f:
+              f.write(m.group(1))
+          print('Updated: ' + ', '.join(sorted(data)) + '  (page version ' + m.group(1) + ')')
+          PY
+          PAGE_VER=$(cat /tmp/page_ver.txt)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm -q update.zip
+          git add index.html README.md
+          git commit -q -m "Update dashboard from update.zip (${PAGE_VER})"
+          git push origin HEAD:main
+          gh workflow run update-dashboard.yml --ref main
+          echo "Done: the page ${PAGE_VER} is being published (about one minute)."
