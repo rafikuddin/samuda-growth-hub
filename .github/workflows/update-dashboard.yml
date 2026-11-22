@@ -25,12 +25,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check the repository
+        run: |
+          # Only index.html and config.json are ever published. These checks just warn about things that should not be in a public repository.
+          for f in data.json *.xlsx *.xls *.csv sheets.txt; do
+            if [ -e "$f" ]; then echo "::warning::$f is in the repository. It is NOT published, but anyone can read it on GitHub. Delete it."; fi
+          done
+          if [ ! -f config.json ]; then echo "::error::config.json is missing (it holds the link of the sign-in service)."; exit 1; fi
+          if grep -q "script.google.com" config.json; then echo "::warning::config.json holds the Apps Script link. Put the Cloudflare Worker link there instead (README, Part 4)."; fi
+
       - name: Collect the files to publish
         run: |
           mkdir _site
-          cp index.html _site/
-          if [ -f config.json ]; then cp config.json _site/; fi
-          if [ -f data.json ]; then cp data.json _site/; fi
+          cp index.html config.json _site/
           touch _site/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
