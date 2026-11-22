@@ -325,6 +325,10 @@ body.locked .app{visibility:hidden}
 .drhint{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:11.5px;font-weight:600;color:var(--c);letter-spacing:.02em}
 .drhint svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 table.t tr.dr{cursor:pointer} table.t tr.dr:focus-visible{outline:2px solid var(--accent2);outline-offset:-2px}
+.hb .hr.dr,.rg.dr{cursor:pointer} .hb .hr.dr:hover{background:rgba(255,255,255,.05);border-radius:8px} .rg.dr:hover .ringw{filter:brightness(1.15)}
+.hb .hr.dr:focus-visible,.rg.dr:focus-visible{outline:2px solid var(--accent2);outline-offset:2px;border-radius:8px}
+.chart.dr-ch .hit{cursor:pointer}
+.drw td.hi{color:var(--good)} .drw td.lo{color:var(--bad)}
 @media (max-width:640px){.dlg.drill{padding:18px 14px 14px}.drsum{white-space:normal;padding-bottom:0;flex:1 1 100%}.drbar .fl{flex:1 1 100%}}
 .rc.ach{display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05} .rc.ach small{font:600 9.5px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:2px}
 .rc.mid{color:var(--gold)}
@@ -625,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '22-Nov-2026 · v40';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '22-Nov-2026 · v41';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -1498,7 +1502,7 @@ function hbarHTML(items, opts){
   return '<div class="hb">' + items.map(function(x, i){
     var c = x.c || opts.c || PALC[i % PALC.length], w = Math.abs(x.v || 0) / mx * 100;
     var lab = opts.signed ? (x.v >= 0 ? '+' : '−') + nf1.format(Math.abs(x.v)) : FMT.cr(x.v || 0, x.v || 0);
-    return '<div class="hr" data-rise><span title="' + esc(x.n + (x.p ? '  ' + x.p : '')) + '">' + esc(x.n) + (x.p ? ' <small style="color:var(--faint)">' + esc(x.p) + '</small>' : '') + '</span>' +
+    return '<div class="hr' + (x._d ? ' dr' : '') + '" data-rise' + (x._d ? ' role="button" tabindex="0" data-dr="' + (DRL.push(x._d) - 1) + '"' : '') + '><span title="' + esc(x.n + (x.p ? '  ' + x.p : '')) + '">' + esc(x.n) + (x.p ? ' <small style="color:var(--faint)">' + esc(x.p) + '</small>' : '') + '</span>' +
       '<span class="tk" style="--c:' + c + '"><b data-bar style="width:' + w.toFixed(1) + '%"></b></span><em class="' + (opts.signed ? (x.v >= 0 ? 'up' : 'down') : '') + '">' + lab + '</em></div>';
   }).join('') + '</div>';
 }
@@ -1506,10 +1510,23 @@ function legendHTML(series){
   return '<div class="lg2">' + series.map(function(s){ return '<span style="--c:' + s.c + '"><i class="' + (s.line ? 'ln' : '') + '" style="background:' + s.c + '"></i>' + esc(s.n) + '</span>'; }).join('') + '</div>';
 }
 var EXTCH = [];   // charts of the current added view, redrawn on resize
+/* Budget page: what opens behind each card (0 budget, 1 order, 2 delivery, 3 collection).
+   Budget, order and delivery open the budget-vs-actual table; collection has no product, so it opens its own rows. */
+function budSpec(i, E){
+  var p = E.period;
+  if (i === 0) return {k:'BV', sort:'b', title:'Sales budget · ' + p};
+  if (i === 1) return {k:'BV', sort:'o', title:'Order vs budget · ' + p};
+  if (i === 2) return {k:'BV', sort:'d', title:'Delivery vs budget · ' + p};
+  return F.cat ? null : {k:'C', bud:true, title:'Collection vs budget · ' + p};
+}
 function drillSpecs(key){
   // which data sits behind each tile of the current view (same order as the tiles on the page)
   if (!DATA || !IX) return;
   var R = IX.R, inM = function(c){ return !!R.cust[c][6]; };
+  if (key === 'budget') {
+    var BE = DATA.ext.budget; DRT = BE && !BE.none ? [0, 1, 2, 3].map(function(i){ return budSpec(i, BE); }) : [];
+    return;
+  }
   if (VIEWS.indexOf(key) > -1) {
     var k = {order:'O', delivery:'D', collection:'C'}[key], V = DATA.views[key];
     DRT = V.tiles.map(function(t, i){ return {k:k, growth:true, title:META[key].label + ' · ' + t.t, pred:V.sel[i]}; });
@@ -1528,6 +1545,12 @@ function rowDrills(key, E){
   if (key === 'products') {
     E.top.forEach(function(x){ x._d = {k:'O', title:'Order · ' + x.n, pred:function(c, s){ return R.sku[s][1] === x.n; }}; });
     E.cats.forEach(function(x){ x._d = {k:'O', title:'Order · ' + x.n, pred:function(c, s){ return !!R.sku[s][2] && R.sku[s][4] === x.n; }}; });
+  }
+  if (key === 'budget' && !E.none) {
+    var X = IX, pick = function(arr, idx, nm){ return function(s){ var g = idx[s]; return (g > -1 ? arr[g] : '(Unassigned)') === nm; }; };
+    E.segs.forEach(function(x){ x._d = {k:'BV', sort:'b', title:'Budget vs actual · ' + x.n + ' · ' + E.period, pred:pick(X.seg, X.sSeg, x.n)}; });
+    E.cats.forEach(function(x){ x._d = {k:'BV', sort:'b', title:'Budget vs actual · ' + x.n + ' · ' + E.period, pred:pick(X.cat, X.sCat, x.n)}; });
+    [E.behind, E.ahead].forEach(function(list){ list.forEach(function(x){ x._d = {k:'BV', sort:'b', title:'Budget vs actual · ' + x.n + ' · ' + E.period, pred:pick(X.grp, X.sGrp, x.n)}; }); });
   }
   if (key === 'pending') {
     E.bu.forEach(function(x){ x._d = {k:'P', title:'Pending delivery · ' + x.n, pred:function(c){ return (R.cust[c][6] ? R.cust[c][2] : 'Not in master') === x.n; }}; });
@@ -1602,19 +1625,19 @@ function renderExt(key){
     var DY = E.days;
     var budTile = '<article class="glass card lift tile" data-rise style="--c:var(--good)"><h3><i></i><span>SALES BUDGET · FULL TARGET</span></h3><div class="val">' + num(E.bud, 'cr0') + '<small>Cr</small></div>' +
       '<div class="tsub">' + esc(E.period) + ' · ' + nf2.format(E.ton.b) + ' TON</div><div class="rrl">' + (DY.closed ? 'Period ended' : '<b>' + DY.left + '</b> of ' + DY.total + ' working days left') + '</div></article>';
-    var rrRows = E.kpis.map(function(k){ return {n:k.t.charAt(0) + k.t.slice(1).toLowerCase(), b:k.bud, a:k.act, ach:k.ach, rem:k.rem, days:k.rem == null ? null : DY.left, rr:k.rr}; });
+    var rrRows = E.kpis.map(function(k, i){ return {n:k.t.charAt(0) + k.t.slice(1).toLowerCase(), b:k.bud, a:k.act, ach:k.ach, rem:k.rem, days:k.rem == null ? null : DY.left, rr:k.rr, _d:budSpec(i + 1, E)}; });
     var rrCols = [{h:'', k:'n', f:'name', dot:function(r, i){ return BC[i]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Actual Cr', k:'a', f:'cr'}, {h:'Ach.', k:'ach', f:'ach'}, {h:'Remaining Cr', k:'rem', f:'rem'}, {h:'Days left', k:'days', f:'n0'}, {h:'RR / day', k:'rr', f:'rr'}];
     var segCols = [{h:'Segment', k:'n', f:'name', dot:function(r, i){ return bc(r.n, i); }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, {h:'Remaining', k:'orem', f:'rem'}, {h:'Order RR / day', k:'orr', f:'rr'}, {h:'Delivery Cr', k:'d', f:'cr'}, {h:'Remaining', k:'drem', f:'rem'}, {h:'Delivery RR / day', k:'drr', f:'rr'}];
     var rrTot = function(rows){ var t = rows.reduce(function(a, x){ a.b += x.b || 0; a.o += x.o || 0; a.d += x.d || 0; a.orem += x.orem || 0; a.drem += x.drem || 0; return a; }, {n:'Total', b:0, o:0, d:0, orem:0, drem:0}); t.orr = DY.left > 0 ? t.orem / DY.left : (t.orem <= 0 ? 0 : null); t.drr = DY.left > 0 ? t.drem / DY.left : (t.drem <= 0 ? 0 : null); return t; };
     var mser = [{n:'Order', c:'var(--c1)', v:E.mon.order}, {n:'Delivery', c:'var(--c2)', v:E.mon.delivery}].concat(E.mon.collection ? [{n:'Collection', c:'var(--c4)', v:E.mon.collection}] : [], [{n:'Budget', c:'var(--good)', v:E.mon.budget, line:true}]);
-    EXTCH.push({id:'cBud', series:mser, unit:'Cr'});
+    EXTCH.push({id:'cBud', series:mser, unit:'Cr', drill:function(i){ return {k:'BV', month:i + 1, sort:'b', title:'Budget vs actual · ' + MONL[i] + ' ' + E.year}; }});
     var acol = function(k){ return {h:'Ach.', k:k, f:'ach'}; };
     var tcols = function(first){ return [{h:first, k:'n', f:'name', dot:function(r, i){ return first === 'Segment' ? bc(r.n, i) : PALC[i % PALC.length]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, acol('oa'), {h:'Delivery Cr', k:'d', f:'cr'}, acol('da'), {h:'Gap Cr', k:'gap', f:'gap'}, {h:'Budget TON', k:'bt', f:'t2'}, {h:'Delivery TON', k:'dt', f:'t2'}, acol('ta')]; };
     var tot = function(rows){ var t = rows.reduce(function(a, x){ a.b += x.b || 0; a.o += x.o || 0; a.d += x.d || 0; a.bt += x.bt || 0; a.dt += x.dt || 0; return a; }, {n:'Total', b:0, o:0, d:0, bt:0, dt:0}); t.oa = t.b ? t.o / t.b : null; t.da = t.b ? t.d / t.b : null; t.gap = t.d - t.b; t.ta = t.bt ? t.dt / t.bt : null; return t; };
     return h + bn + '<section class="tiles four">' + budTile + E.kpis.map(achTile).join('') + '</section>' +
       '<section class="p2">' + panel('Budget vs order, delivery & collection by month (Cr)', legendHTML(mser) + '<div class="chart" id="cBud"></div>', 'Bars = actual · Line = budget') +
-        panel('Volume vs budget (TON)', '<div class="rings">' + [['Order', E.ton.o, E.ton.oa, 'var(--c3)'], ['Delivery', E.ton.d, E.ton.da, 'var(--c5)']].map(function(x){ var p = Math.min(1, x[2] || 0) * 100;
-          return '<div class="rg" style="--c:' + x[3] + '"><div class="ringw"><svg viewBox="0 0 80 80" aria-hidden="true"><g transform="rotate(-90 40 40)"><circle class="tr" cx="40" cy="40" r="34" stroke-width="7"/><circle class="ra" cx="40" cy="40" r="34" stroke-width="7" stroke="' + x[3] + '" pathLength="100" stroke-dasharray="' + p.toFixed(2) + ' 100" data-to="' + p.toFixed(2) + '"/></g></svg>' +
+        panel('Volume vs budget (TON)', '<div class="rings">' + [['Order', E.ton.o, E.ton.oa, 'var(--c3)', 'ot'], ['Delivery', E.ton.d, E.ton.da, 'var(--c5)', 'dt']].map(function(x){ var p = Math.min(1, x[2] || 0) * 100;
+          return '<div class="rg dr" role="button" tabindex="0" title="Show the data behind this" data-dr="' + (DRL.push({k:'BV', sort:x[4], title:x[0] + ' volume vs budget (TON) · ' + E.period}) - 1) + '" style="--c:' + x[3] + '"><div class="ringw"><svg viewBox="0 0 80 80" aria-hidden="true"><g transform="rotate(-90 40 40)"><circle class="tr" cx="40" cy="40" r="34" stroke-width="7"/><circle class="ra" cx="40" cy="40" r="34" stroke-width="7" stroke="' + x[3] + '" pathLength="100" stroke-dasharray="' + p.toFixed(2) + ' 100" data-to="' + p.toFixed(2) + '"/></g></svg>' +
             '<div class="rc ' + achCls(x[2]) + '">' + (x[2] == null ? 'n/a' : num(x[2], 'pc0')) + '</div></div><b>' + x[0] + ' TON</b><small>' + nf2.format(x[1]) + ' of ' + nf2.format(E.ton.b) + ' TON</small></div>'; }).join('') + '</div>') + '</section>' +
       '<section class="p2">' + panel('Remaining budget & daily required rate (RR)', tableHTML(rrCols, rrRows), DY.closed ? 'Period ended' : 'RR = remaining ÷ ' + DY.left + ' working days') +
         panel('How the days are counted', hlHTML([{k:'info', t:'Target: the full budget of ' + E.period + '.'}, {k:'info', t:'Data up to ' + DY.last + '.'},
@@ -1712,7 +1735,9 @@ function drawGroup(cfg){
     }
     hh.addEventListener('mouseenter', show); hh.addEventListener('mouseleave', function(){ tip.classList.remove('show'); });
     hh.addEventListener('click', show);
+    if (cfg.drill) hh.addEventListener('click', function(){ var sp = cfg.drill(+hh.dataset.m); if (sp) openDrill(sp); });
   });
+  if (cfg.drill) host.classList.add('dr-ch');
 }
 function drawExt(){ EXTCH.forEach(drawGroup); }
 
@@ -2166,6 +2191,7 @@ var dr = {ov:$('#ovDr'), t:$('#drT'), s:$('#drS'), m:$('#drM'), q:$('#drQ'), w:$
 var nfT = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}), nfN = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 function drillRows(spec){
   var X = IX, R = X.R, M = masks(), out = [];
+  if (spec.bud) { var all = new Uint8Array(R.cust.length); all.fill(1); M = {c:all, s:M.s, sOn:M.sOn, day:0}; }      // Budget page: customer and day filters do not apply there
   if (spec.k === 'P') {
     (R.P || []).forEach(function(l){ if (!M.c[l[0]] || (M.sOn && !M.s[l[1]]) || (spec.pred && !spec.pred(l[0], l[1]))) return; out.push({ym:-1, c:l[0], s:l[1], a:l[4] * X.U, t:l[5] / 1000, age:l[3], ord:l[2]}); });
     return {rows:out, period:'open orders as of ' + DATA.ext.pending.asof};
@@ -2194,7 +2220,7 @@ var DMODES = {
   dp2: {n:'Day × Product', date:true, key:function(r){ return r.d + '|' + r.s; }, cols:['Date', 'Product', 'Code', 'Category'], cell:function(r, C, S){ return [dayText(r.d), S[1], S[0], S[4]]; }, sort:'key'},
   alld:{n:'All detail (month × day × distributor × product)', date:true, keyCols:2, key:function(r){ return r.d + '|' + r.c + '|' + r.s; }, cols:['Month', 'Date', 'Distributor', 'Code', 'Product', 'Category'],
         cell:function(r, C, S){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), dayText(r.d), C[1], C[0], S[1], S[4]]; }, sort:'key'},
-  line:{n:'Open order line', key:function(r, i){ return i; }, cols:['Distributor', 'Code', 'BU', 'Product', 'Order ref', 'Age (days)'], cell:function(r, C, S){ return [C[1], C[0], C[2], S[1], '#' + (r.ord + 1), r.age]; }, numcol:5}
+  line:{n:'Open order line', key:function(r, i){ return i; }, cols:['Distributor', 'Code', 'BU', 'Product', 'Order ref', 'Age (days)'], cell:function(r, C, S){ return [C[1], C[0], C[2], S[1], typeof r.ord === 'string' ? r.ord : '#' + (r.ord + 1), r.age]; }, numcol:5}
 };
 var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function dayDate(d){ return new Date((d + 10957) * 864e5); }
@@ -2207,6 +2233,7 @@ function drillModes(k){
   return ['dp', 'd', 'p'].concat(day ? ['day', 'dd', 'dp2', 'm', 'alld'] : ['m', 'all']);      // with day-wise data the last option carries the day as well
 }
 function drillBuild(){
+  if (DS.bv) return bvBuild();
   var R = IX.R, md = DMODES[DS.mode], g = {}, list = [], hasT = DS.spec.k !== 'C';
   DS.rows.forEach(function(r, i){
     var k = md.key(r, i), e = g[k];
@@ -2218,8 +2245,12 @@ function drillBuild(){
   DS.list = list; DS.sort = md.sort === 'key' ? {c:md.date ? 0 : -1, d:1} : {c:DS.spec.ton ? md.cols.length + 1 : md.cols.length, d:-1};
   drillShow(true);
 }
-function drillVal(e, c){ return c === -1 || c < DS.keyCols ? e.k : (c < DS.nText ? e.cells[c] : (c === DS.nText ? e.a : e.t)); }
+function drillVal(e, c){
+  if (DS.bv && c >= DS.nText) { var v = bvVal(DS.ncols[c - DS.nText], e); return v == null ? -1e18 : v; }
+  return c === -1 || c < DS.keyCols ? e.k : (c < DS.nText ? e.cells[c] : (c === DS.nText ? e.a : e.t));
+}
 function drillShow(reset){
+  if (DS.bv) return bvShow(reset);
   var tk = dr.q.value.toLowerCase().split(/\s+/).filter(Boolean);
   var f = tk.length ? DS.list.filter(function(e){ return tk.every(function(k){ return e.text.indexOf(k) > -1; }); }) : DS.list.slice();
   var c = DS.sort.c, d = DS.sort.d;
@@ -2238,20 +2269,102 @@ function drillShow(reset){
   dr.n.textContent = 'Showing ' + nf0.format(Math.min(DS.shown, f.length)) + ' of ' + nf0.format(f.length) + ' rows';
   dr.more.style.display = f.length > DS.shown ? '' : 'none';
 }
+/* ---- budget vs actual table (Budget page): budget, order and delivery side by side per product, group, category, segment or month ---- */
+var BVM = {
+  p:{n:'Product', cols:['Product', 'Code', 'Segment', 'Category'], key:function(r){ return r.s; }, cell:function(r){ var S = IX.R.sku[r.s]; return [S[1], S[0], S[2] || '(Unassigned)', S[4] || '(Unassigned)']; }},
+  g:{n:'SKU group', cols:['SKU group', 'Segment'], key:function(r){ return IX.sGrp[r.s]; }, cell:function(r){ var g = IX.sGrp[r.s], sg = g > -1 ? IX.grpSeg[g] : -1; return [g > -1 ? IX.grp[g] : '(Unassigned)', sg > -1 ? IX.seg[sg] : '(Unassigned)']; }},
+  c:{n:'Product category', cols:['Category'], key:function(r){ return IX.sCat[r.s]; }, cell:function(r){ var c = IX.sCat[r.s]; return [c > -1 ? IX.cat[c] : '(Unassigned)']; }},
+  s:{n:'Segment', cols:['Segment'], key:function(r){ return IX.sSeg[r.s]; }, cell:function(r){ var s = IX.sSeg[r.s]; return [s > -1 ? IX.seg[s] : '(Unassigned)']; }},
+  m:{n:'Month', cols:['Month'], key:function(r){ return r.ym; }, cell:function(r){ return [MONL[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0))]; }, sort:'key'}
+};
+var BVF = ['b', 'o', 'd', 'c', 'bt', 'ot', 'dt'];
+function bvCols(hasC){
+  return [{h:'Budget (৳)', s:'b'}, {h:'Order (৳)', s:'o'}, {h:'Delivery (৳)', s:'d'}].concat(hasC ? [{h:'Collection (৳)', s:'c'}] : [],
+    [{h:'Order ach. %', r:['o', 'b']}, {h:'Delivery ach. %', r:['d', 'b']}, {h:'Gap (৳)', g:['d', 'b']}, {h:'Budget TON', s:'bt', t:1}, {h:'Order TON', s:'ot', t:1}, {h:'Delivery TON', s:'dt', t:1}, {h:'TON ach. %', r:['dt', 'bt']}]);
+}
+function bvVal(col, o){ return col.s ? o[col.s] : (col.r ? (o[col.r[1]] > 0 ? o[col.r[0]] / o[col.r[1]] : null) : o[col.g[0]] - o[col.g[1]]); }
+function bvFmt(col, v){ return v == null ? '–' : (col.r ? nf1.format(v * 100) + '%' : (col.g ? (v >= 0 ? '+' : '−') + nfT.format(Math.abs(v)) : (col.t ? nfN : nfT).format(v))); }
+function bvCls(col, v){ return v == null ? '' : (col.r ? (v >= 1 ? 'hi' : (v < .9 ? 'lo' : '')) : (col.g ? (v >= 0 ? 'hi' : 'lo') : '')); }
+function bvRows(spec){
+  var X = IX, R = X.R, B = R.B, M = masks(), Y = F.year, U = X.U, map = {}, list = [];
+  var pO = period('O', false), pD = period('D', false), pC = period('C', false);
+  var sOk = function(s){ return (!M.sOn || M.s[s]) && (!spec.pred || spec.pred(s)); };
+  var mOk = function(pr, m){ return spec.month ? m === spec.month : !!pr.P[m]; };
+  var row = function(ym, s){ var k = ym + '|' + s, e = map[k]; if (!e) { e = map[k] = {ym:ym, s:s, b:0, o:0, d:0, c:0, bt:0, ot:0, dt:0}; list.push(e); } return e; };
+  if (B && B.ym) for (var i = 0; i < B.ym.length; i++) {
+    if (2000 + ((B.ym[i] / 12) | 0) !== Y || !mOk(pO, B.ym[i] % 12 + 1) || !sOk(B.s[i])) continue;
+    var e = row(B.ym[i], B.s[i]); e.b += B.v[i]; e.bt += B.t[i] / 1000;
+  }
+  [['O', pO, 'o', 'ot'], ['D', pD, 'd', 'dt']].forEach(function(z){
+    var T = R[z[0]];
+    for (var i = 0; i < T.ym.length; i++) {
+      if (2000 + ((T.ym[i] / 12) | 0) !== Y || !mOk(z[1], T.ym[i] % 12 + 1) || !sOk(T.s[i])) continue;
+      var e = row(T.ym[i], T.s[i]); e[z[2]] += T.a[i] * U; e[z[3]] += T.t[i] / 1000;
+    }
+  });
+  var hasC = !M.sOn && !spec.pred;                       // collection is not recorded per product
+  if (hasC) { var T = R.C; for (var j = 0; j < T.ym.length; j++) { if (2000 + ((T.ym[j] / 12) | 0) !== Y || !mOk(pC, T.ym[j] % 12 + 1)) continue; row(T.ym[j], -1).c += T.a[j] * U; } }
+  return {rows:list, hasC:hasC, period:spec.month ? MONL[spec.month - 1] + ' ' + Y : span(pO.pl, Y)};
+}
+function bvBuild(){
+  var md = BVM[DS.mode], g = {}, list = [], month = DS.mode === 'm';
+  DS.raw.forEach(function(r){
+    if (r.s === -1 && !month) return;
+    var k = md.key(r), e = g[k];
+    if (!e) { e = g[k] = {cells:md.cell(r), k:k, b:0, o:0, d:0, c:0, bt:0, ot:0, dt:0}; list.push(e); }
+    BVF.forEach(function(f){ e[f] += r[f]; });
+  });
+  list.forEach(function(e){ e.text = e.cells.join(' ').toLowerCase(); });
+  DS.ncols = bvCols(DS.hasC && month); DS.cols = md.cols.concat(DS.ncols.map(function(c){ return c.h; })); DS.nText = md.cols.length;
+  DS.keyCols = md.sort === 'key' ? 1 : 0; DS.date = false; DS.numcol = undefined; DS.hasT = true; DS.list = list;
+  var si = 0; DS.ncols.forEach(function(c, i){ if (c.s === DS.spec.sort) si = i; });
+  DS.sort = md.sort === 'key' ? {c:0, d:1} : {c:DS.nText + si, d:-1};
+  bvShow(true);
+}
+function bvShow(reset){
+  var tk = dr.q.value.toLowerCase().split(/\s+/).filter(Boolean);
+  var f = tk.length ? DS.list.filter(function(e){ return tk.every(function(k){ return e.text.indexOf(k) > -1; }); }) : DS.list.slice();
+  var c = DS.sort.c, d = DS.sort.d;
+  f.sort(function(x, y){ var a = drillVal(x, c), b = drillVal(y, c); return (typeof a === 'number' && typeof b === 'number' ? a - b : String(a).localeCompare(String(b))) * d; });
+  DS.view = f; if (reset) DS.shown = 300;
+  var T = {b:0, o:0, d:0, c:0, bt:0, ot:0, dt:0}; f.forEach(function(e){ BVF.forEach(function(k){ T[k] += e[k]; }); });
+  var h = '<table><thead><tr>' + DS.cols.map(function(n, i){ return '<th data-c="' + i + '" class="' + (i >= DS.nText ? 'num' : '') + '">' + esc(n) + (c === i ? '<i>' + (d > 0 ? '▲' : '▼') + '</i>' : '') + '</th>'; }).join('') + '</tr></thead><tbody>';
+  var numTd = function(col, o){ var v = bvVal(col, o); return '<td class="num ' + bvCls(col, v) + '">' + bvFmt(col, v) + '</td>'; };
+  h += f.slice(0, DS.shown).map(function(e){
+    return '<tr>' + e.cells.map(function(v){ return '<td title="' + esc(v) + '">' + esc(v) + '</td>'; }).join('') + DS.ncols.map(function(col){ return numTd(col, e); }).join('') + '</tr>';
+  }).join('');
+  h += '</tbody><tfoot><tr><td colspan="' + DS.nText + '">Total · ' + nf0.format(f.length) + ' row' + (f.length === 1 ? '' : 's') + '</td>' + DS.ncols.map(function(col){ return numTd(col, T); }).join('') + '</tr></tfoot></table>';
+  dr.w.innerHTML = f.length ? h : '<div class="empty">Nothing matches.</div>';
+  if (reset) dr.w.scrollTop = 0;
+  var pc = function(a, b){ return b > 0 ? ' (' + nf1.format(a / b * 100) + '%)' : ''; };
+  dr.sum.innerHTML = 'Budget <b>' + nf2.format(T.b / 1e7) + ' Cr</b> · Order <b>' + nf2.format(T.o / 1e7) + ' Cr</b>' + pc(T.o, T.b) + ' · Delivery <b>' + nf2.format(T.d / 1e7) + ' Cr</b>' + pc(T.d, T.b) + ' · <b>' + nf2.format(T.bt) + '</b> TON budget';
+  dr.n.textContent = 'Showing ' + nf0.format(Math.min(DS.shown, f.length)) + ' of ' + nf0.format(f.length) + ' rows';
+  dr.more.style.display = f.length > DS.shown ? '' : 'none';
+}
+function openBV(spec){
+  var got = bvRows(spec), modes = spec.month ? ['p', 'g', 'c', 's'] : ['p', 'g', 'c', 's', 'm'];
+  DS = {spec:spec, bv:true, raw:got.rows, hasC:got.hasC, mode:'p'};
+  dr.t.textContent = spec.title;
+  dr.s.textContent = got.period + (F.cat ? '  ·  Filter: ' + F.cat : '') + '  ·  Budget, order and delivery side by side. Ach. = actual ÷ budget · Gap = delivery − budget. The budget is set per product, so Business Unit, Region, Area, Base, Distributor and Day filters are not applied.';
+  dr.m.innerHTML = modes.map(function(m){ return opt(m, BVM[m].n, DS.mode); }).join('');
+  dr.q.value = ''; dr.q.placeholder = 'Product, group, category, code…'; bvBuild(); dr.ov.classList.add('on');
+}
 function openDrill(spec){
   if (!IX || !spec) return;
-  var got = drillRows(spec), ft = filterText(), modes = drillModes(spec.k);
+  if (spec.k === 'BV') return openBV(spec);
+  var got = drillRows(spec), ft = spec.bud ? (F.cat || '') : filterText(), modes = drillModes(spec.k);
   DS = {spec:spec, rows:got.rows, mode:modes[0]};
   dr.t.textContent = spec.title;
   dr.s.textContent = got.period + (ft ? '  ·  Filter: ' + ft.replace(/\s{2,}/g, ' ') : '') + '  ·  ' + (spec.k === 'P' ? 'Open order lines (ordered, not yet delivered).' : (IX.daily ? 'Daily' : 'Monthly') + ' totals per distributor' + (spec.k === 'C' ? '' : ' and product') + '. Single order lines are not kept in the dashboard.');
   dr.m.innerHTML = modes.map(function(m){ return opt(m, DMODES[m].n, DS.mode); }).join('');
-  dr.q.value = ''; drillBuild(); dr.ov.classList.add('on');
+  dr.q.value = ''; dr.q.placeholder = 'Distributor, product, code…'; drillBuild(); dr.ov.classList.add('on');
 }
 function closeDrill(){ dr.ov.classList.remove('on'); }
 function drillCsv(){
   if (!DS) return;
   var q = function(v){ v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-  var lines = [DS.cols.map(q).join(',')].concat(DS.view.map(function(e){ return e.cells.map(q).concat([e.a.toFixed(2)], DS.hasT ? [e.t.toFixed(2)] : []).join(','); }));
+  var lines = DS.bv ? [DS.cols.map(q).join(',')].concat(DS.view.map(function(e){ return e.cells.map(q).concat(DS.ncols.map(function(col){ var v = bvVal(col, e); return v == null ? '' : (col.r ? (v * 100).toFixed(2) : v.toFixed(2)); })).join(','); }))
+    : [DS.cols.map(q).join(',')].concat(DS.view.map(function(e){ return e.cells.map(q).concat([e.a.toFixed(2)], DS.hasT ? [e.t.toFixed(2)] : []).join(','); }));
   try {
     var url = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv;charset=utf-8'})), a = document.createElement('a');
     a.href = url; a.download = (DS.spec.title + ' ' + dr.s.textContent.split('  ·  ')[0]).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') + '.csv';
@@ -2276,9 +2389,9 @@ function wireDrill(key){
     var go = function(){ openDrill(sp); };
     el.addEventListener('click', go); el.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
   });
-  $$('tr[data-dr]', stage).forEach(function(tr){
+  $$('[data-dr]', stage).forEach(function(tr){      // table rows, bars and rings
     var go = function(){ openDrill(DRL[+tr.dataset.dr]); };
-    tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); go(); } });
+    tr.addEventListener('click', go); tr.addEventListener('keydown', function(e){ if (e.key === 'Enter' || (e.key === ' ' && tr.getAttribute('role') === 'button')) { e.preventDefault(); go(); } });
   });
 }
 

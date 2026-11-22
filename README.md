@@ -175,6 +175,11 @@ Year · Month · Period (YTD / MTD) · **Day** · Business Unit · Region · **A
 * **Day** shows one day of the month, for example 15: with Month = September it is 15 September 2026 against 15 September 2025; with Month = Auto and YTD it is the 15th of every month in the period. Choose **All** to switch it off. It does not apply to Pending delivery or to the Budget page.
 * **Base** is `BASE_NAME` of the customer master. It follows the Area you pick (Business Unit → Region → Area → Base → Distributor). After installing the new `Code.gs`, run **Dashboard → Update data now** once so the Base names are added to the data.
 
+## Details behind the numbers
+
+* **Pending delivery** lists open order lines with the real **sales order number** (`Order Number` of SALES_ORDER, e.g. `SO-SSCL-DF-2026-001540`) in the *Order ref* column. Run **Dashboard → Update data now** after installing the new `Code.gs` so the numbers are added to the data.
+* **Budget vs actual**: every card, ring, table row, bar and month of the chart opens a details panel. Sales budget, Order and Delivery cards, the TON rings, the segment / category rows and the "furthest behind / ahead" bars show budget, order and delivery side by side (by product, SKU group, category, segment or month; the month view adds Collection). The Collection card lists collections by distributor and month. Click a month in the chart to see that month only. *Download CSV* saves what is on screen.
+
 ## Notes
 
 * Import the `.xlsx` file; do not copy-paste rows. Pasting can turn product codes such as `08-002` into dates.
