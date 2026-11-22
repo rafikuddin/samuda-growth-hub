@@ -629,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '22-Nov-2026 · v43';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '22-Nov-2026 · v44';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -645,7 +645,7 @@ var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, func
 var VIEWS = ['order','delivery','collection'];
 var EXT = {overview:'overview', budget:'budget', units:'bu', regions:'region', products:'products', pending:'pending'};
 var ALL = ['overview','budget','order','delivery','collection','units','regions','products','pending'];
-var GHSTATE = 'loading', DATA = null, SRC = {kind:'none', at:''};
+var FAILWHY = '', GHSTATE = 'loading', DATA = null, SRC = {kind:'none', at:''};
 var META = {
   overview:   {label:'Overview',         vc:'var(--accent2)'},
   budget:     {label:'Budget vs actual', vc:'var(--good)'},
@@ -1762,7 +1762,7 @@ function ghText(){
     if (GHSTATE === 'loading') return 'Reading the data…';
     if (GHSTATE === 'nodata') return '<span class="src-warn">● No data has been built yet. In the Admin Google Sheet use Dashboard → Update data now.</span>';
     if (GHSTATE === 'noaccess') return '<span class="src-warn">● ' + esc(NOACC) + '</span>';
-    return '<span class="src-warn">● Could not reach the data service. Check the internet connection and try again.</span>';
+    return '<span class="src-warn">● Could not get the data. Check the internet connection and try again.' + (FAILWHY ? ' Reason: ' + esc(FAILWHY) : '') + '</span>';
   }
   if (GHSTATE === 'ok') return '<span class="src-ok">● Loaded data.json from GitHub (built ' + esc(SRC.at) + ').</span>';
   if (GHSTATE === 'loading') return 'Reading data.json…';
@@ -1921,7 +1921,7 @@ function emptyHTML(){
     (load ? '<div class="banner note" data-rise>Reading the data…</div>' :
      GHSTATE === 'noaccess' ? '<div class="banner warn" data-rise>⚠  ' + esc(NOACC) + '</div>' :
      GHSTATE === 'nodata' ? '<div class="banner warn" data-rise>⚠  No dashboard data has been built yet. In the Dashboard Admin Google Sheet choose Dashboard → Update data now, then press Update data → Update & reload here.</div>' :
-     '<div class="banner warn" data-rise>⚠  Could not reach the data service. Check the internet connection, then press Update data → Update & reload.</div>');
+     '<div class="banner warn" data-rise>⚠  Could not get the data. Check the internet connection, then press Update data → Update & reload.' + (FAILWHY ? '<br>Reason: ' + esc(FAILWHY) : '') + '</div>');
   return headHTML({title:'Samuda Growth Hub', sub:load ? 'LOADING DATA' : 'NO DATA', cmp:load ? 'Reading data.json…' : 'data.json was not found'}) +
     (load ? '<div class="banner note" data-rise>Reading data.json…</div>' :
     '<div class="banner warn" data-rise>⚠  Could not read data.json. Upload data.json to the same GitHub repository as index.html and open the page from its GitHub Pages link. Press Update data for the steps.</div>');
@@ -1987,21 +1987,25 @@ function setTok(t, keep){ try { (keep ? localStorage : sessionStorage).setItem(T
 function clearTok(){ try { localStorage.removeItem(TK); sessionStorage.removeItem(TK); } catch(e){} TOKEN = null; }
 /* text/plain keeps this a "simple" request, which Apps Script web apps accept from other sites */
 function api(payload){
-  return fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload), redirect:'follow'}).then(function(r){ return r.json(); });
+  return fetch(API, {method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload), redirect:'follow'}).then(function(r){ return r.json().catch(function(){ throw new Error('the service answered with something that is not data (HTTP ' + r.status + ')'); }); });
 }
 var NOACC = '';
 function takeApi(j){
   if (j && j.name) USER = j.name;
   if (j) { SCOPE = j.scope || ''; ADMIN = j.admin === true; }
   if (j && j.error === 'noaccess') { GHSTATE = 'noaccess'; NOACC = j.message || ''; return 'noaccess'; }
-  if (j && j.ok && validRaw(j.data)) { adopt(j.data, 'sheet'); return 'ok'; }
+  if (j && j.ok && validRaw(j.data)) {
+    try { adopt(j.data, 'sheet'); return 'ok'; } catch (e) { GHSTATE = 'fail'; FAILWHY = 'the data arrived but this page could not read it (' + (e && e.message || e) + ')'; return 'fail'; }
+  }
   if (j && j.error === 'nodata') { GHSTATE = 'nodata'; return 'nodata'; }
   if (j && j.error === 'auth') return 'auth';
-  GHSTATE = 'fail'; return 'fail';
+  GHSTATE = 'fail';
+  FAILWHY = j && j.ok ? 'the service answered, but the data is not in the expected form' : (j && (j.message || j.error) ? String(j.message || j.error) + (j.error ? ' [' + j.error + ']' : '') : 'empty answer from the service');
+  return 'fail';
 }
 function loadApi(){
   GHSTATE = 'loading';
-  return api({action:'data', token:TOKEN}).then(takeApi, function(){ GHSTATE = 'fail'; return 'fail'; }).then(function(st){
+  return api({action:'data', token:TOKEN}).then(takeApi, function(e){ GHSTATE = 'fail'; FAILWHY = 'no usable answer from the service: ' + (e && e.message || e); return 'fail'; }).then(function(st){
     if (st === 'auth') { lockOut('Your session has ended. Please sign in again.'); return false; }
     return afterLoad(st === 'ok');
   });
