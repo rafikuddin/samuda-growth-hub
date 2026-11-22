@@ -629,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '22-Nov-2026 · v44';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '23-Nov-2026 · v45';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -780,6 +780,19 @@ function budMask(M){
   var sg = budSeg(), X = IX; if (!sg) return {s:M.s, sOn:M.sOn};
   var s = new Uint8Array(M.s.length); for (var j = 0; j < s.length; j++) s[j] = M.s[j] && X.seg[X.sSeg[j]] === sg ? 1 : 0;
   return {s:s, sOn:true};
+}
+/* Budget page, collection: it is booked per distributor, so a Business Unit that distributors belong to (Adhesive, DOP, Thinner) filters it by those distributors;
+   a product line without distributors (Wood Lacquer) and a product category cannot split it */
+function budColl(){
+  var sg = budSeg(); prodBU();
+  if (F.cat) return {on:false, bu:''};
+  if (!sg) return {on:true, bu:''};
+  return IX.cbuSet[sg] ? {on:true, bu:sg} : {on:false, bu:''};
+}
+function budCust(bu){
+  var R = IX.R, m = new Uint8Array(R.cust.length);
+  for (var i = 0; i < m.length; i++) m[i] = !bu || (R.cust[i][6] && R.cust[i][2] === bu) ? 1 : 0;
+  return m;
 }
 function masks(){
   var X = IX, R = X.R, n = R.cust.length, cm = new Uint8Array(n), sm = new Uint8Array(R.sku.length), pBU = prodBU(), cOn = !!((F.bu && !pBU) || F.reg || F.ter || F.base || F.dist);
@@ -1111,7 +1124,7 @@ function budgetView(M){
   if (!has) { base.none = true; base.msg = B && B.ym && B.ym.length ? 'There is no budget for ' + Y + ' in the data. Add the ' + Y + ' budget Sheet to the Sources tab, then update the data.' : 'No budget has been loaded yet. Add the budget Google Sheets to the Sources tab of the Admin Sheet, then run Dashboard → Update data now.'; return base; }
   // budget is per product, so customer filters cannot apply here; product category does
   var allC = new Uint8Array(R.cust.length); allC.fill(1);
-  var BM = budMask(M), Ms = {c:allC, s:BM.s, sOn:BM.sOn, cOn:false, any:BM.sOn}, Mc = {c:allC, s:M.s, sOn:false};
+  var BM = budMask(M), BC = budColl(), Ms = {c:allC, s:BM.s, sOn:BM.sOn, cOn:false, any:BM.sOn}, Mc = {c:budCust(BC.bu), s:M.s, sOn:false};
   // the budget is always the full target of the period; working days tell how much time is left to reach it
   var last = null; ['O','D','C'].forEach(function(k){ var la = pd(X.meta[k].lastAmt || X.meta[k].lastAny); if (la && (!last || la > last)) last = la; });
   var cal = R.cal || {off:[5, 6], hol:[]}, hol = {}; (cal.hol || []).forEach(function(d){ hol[d] = 1; });
@@ -1137,7 +1150,7 @@ function budgetView(M){
   var ach = function(a, bv){ return bv > 0 ? a / bv : null; };
   var rrOf = function(rem){ return rem == null ? null : (rem <= 0 ? 0 : (wLeft > 0 ? rem / wLeft : null)); };      // required per working day
   var kp = function(t, a, on){ var rem = on ? Math.max(0, bud - a) : null; return {t:t, act:on ? r4(a) : null, bud:r4(bud), ach:on ? r4(ach(a, bud)) : null, gap:on ? r4(a - bud) : null, rem:r4(rem), rr:r4(rrOf(rem))}; };
-  var kpis = [kp('ORDER', O.cy[0], true), kp('DELIVERY', D.cy[0], true), kp('COLLECTION', C.cy[0], !BM.sOn)];
+  var kpis = [kp('ORDER', O.cy[0], true), kp('DELIVERY', D.cy[0], true), kp('COLLECTION', C.cy[0], BC.on)];
   var monA = function(A){ var a = []; for (var m = 1; m <= 12; m++) a.push(m <= b ? r4(A.mon[m]) : null); return a; };
   var monB = []; for (var m2 = 1; m2 <= 12; m2++) monB.push(bT.mon[m2] > 0 ? r4(bT.mon[m2]) : null);
   function table(names, keyOf){
@@ -1162,7 +1175,9 @@ function budgetView(M){
     : 'ℹ  Data up to ' + fdate(last) + '  ·  ' + wLeft + ' working day' + (wLeft === 1 ? '' : 's') + ' left to the end of ' + endTxt + ' (' + (offTxt || 'no weekly day off') + (hLeft ? ' and ' + hLeft + ' holiday' + (hLeft === 1 ? '' : 's') : '') + ' not counted).');
   if (F.reg || F.ter || F.base || F.dist || (F.bu && !budSeg())) notes.push('ℹ  The budget is set per product, so the ' + (budSeg() ? '' : 'Business Unit, ') + 'Region, Area, Base and Distributor filters are not applied on this page.' + (budSeg() ? ' Business Unit here means the product line (' + budSeg() + ').' : ''));
   if (F.day && IX.daily) notes.push('ℹ  The budget is set per month, so the Day filter is not applied on this page.');
-  if (BM.sOn) notes.push('ℹ  Collection is not recorded per product, so it is not shown for one ' + (budSeg() ? 'business unit or ' : '') + 'product category.');
+  if (F.cat) notes.push('ℹ  Collection is not recorded per product, so it is not shown for one product category.');
+  else if (budSeg() && !BC.on) notes.push('ℹ  Collection is booked per distributor and no distributor belongs to ' + budSeg() + ', so collection is not shown for it.');
+  else if (BC.bu) notes.push('ℹ  Collection is for the distributors of the ' + BC.bu + ' business unit.');
   var ins = [], pc = function(v){ return nf2.format(v * 100) + '%'; };
   kpis.forEach(function(k){ if (k.ach != null) ins.push({k:k.ach >= 1 ? 'up' : (k.ach >= .9 ? 'warn' : 'down'), l:k.ach >= 1 ? 'ON BUDGET' : 'BELOW BUDGET', t:k.t.charAt(0) + k.t.slice(1).toLowerCase() + ' is ' + pc(k.ach) + ' of budget: ' + nf1.format(k.act) + ' Cr against ' + nf1.format(k.bud) + ' Cr (' + (k.gap >= 0 ? '+' : '−') + nf1.format(Math.abs(k.gap)) + ' Cr).'}); });
   var sg = segs.filter(function(x){ return x.b > 1 && x.da != null; });
@@ -1171,7 +1186,7 @@ function budgetView(M){
     if (ws !== bs) ins.push({k:ws.da < .9 ? 'down' : 'info', l:'FURTHEST BEHIND', t:'Furthest behind: ' + ws.n + ' at ' + pc(ws.da) + ' of budget (' + nf1.format(ws.gap) + ' Cr).'}); }
   base.days = {left:wLeft, total:wTot, hol:hLeft, closed:closed, end:endTxt, last:last ? fdate(last) : '', off:offTxt};
   base.bud = r4(bud); base.budFull = r4(bT.full); base.frac = frac; base.kpis = kpis; base.banner = notes.join('  ');
-  base.mon = {budget:monB, order:monA(O), delivery:monA(D), collection:BM.sOn ? null : monA(C)};
+  base.mon = {budget:monB, order:monA(O), delivery:monA(D), collection:BC.on ? monA(C) : null};
   base.segs = segs; base.cats = cats; base.behind = behind; base.ahead = ahead; base.ins = ins;
   base.ton = {b:r2(bTon), o:r2(oTon), oa:r4(ach(oTon, bTon)), d:r2(dTon), da:r4(ach(dTon, bTon))};
   base.info = 'Budget ' + Y + ': ' + nf1.format(bsum(one, 1, 'v').mon.reduce(function(a, v){ return a + v; }, 0)) + ' Cr for the year';
@@ -1532,7 +1547,7 @@ function budSpec(i, E){
   if (i === 0) return {k:'BV', show:'b', sort:'b', title:'Sales budget · ' + p};
   if (i === 1) return {k:'BV', show:'o', sort:'o', title:'Order vs budget · ' + p};
   if (i === 2) return {k:'BV', show:'d', sort:'d', title:'Delivery vs budget · ' + p};
-  return budMask(masks()).sOn ? null : {k:'C', bud:true, title:'Collection vs budget · ' + p};
+  return !budColl().on ? null : {k:'C', bud:true, title:'Collection vs budget · ' + p};
 }
 function drillSpecs(key){
   // which data sits behind each tile of the current view (same order as the tiles on the page)
@@ -2211,7 +2226,7 @@ var dr = {ov:$('#ovDr'), t:$('#drT'), s:$('#drS'), m:$('#drM'), q:$('#drQ'), w:$
 var nfT = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}), nfN = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 function drillRows(spec){
   var X = IX, R = X.R, M = masks(), out = [];
-  if (spec.bud) { var all = new Uint8Array(R.cust.length), BM = budMask(M); all.fill(1); M = {c:all, s:BM.s, sOn:BM.sOn, day:0}; }      // Budget page: customer and day filters do not apply there
+  if (spec.bud) { var BM = budMask(M); M = {c:budCust(spec.k === 'C' ? budColl().bu : ''), s:BM.s, sOn:BM.sOn, day:0}; }      // Budget page: customer and day filters do not apply there
   if (spec.k === 'P') {
     (R.P || []).forEach(function(l){ if (!M.c[l[0]] || (M.sOn && !M.s[l[1]]) || (spec.pred && !spec.pred(l[0], l[1]))) return; out.push({ym:-1, c:l[0], s:l[1], a:l[4] * X.U, t:l[5] / 1000, age:l[3], ord:l[2]}); });
     return {rows:out, period:'open orders as of ' + DATA.ext.pending.asof};
@@ -2327,8 +2342,8 @@ function bvRows(spec){
       var e = row(T.ym[i], T.s[i]); e[z[2]] += T.a[i] * U; e[z[3]] += T.t[i] / 1000;
     }
   });
-  var hasC = !BM.sOn && !spec.pred;                       // collection is not recorded per product
-  if (hasC) { var T = R.C; for (var j = 0; j < T.ym.length; j++) { if (2000 + ((T.ym[j] / 12) | 0) !== Y || !mOk(pC, T.ym[j] % 12 + 1)) continue; row(T.ym[j], -1).c += T.a[j] * U; } }
+  var BC = budColl(), cmask = budCust(BC.bu), hasC = BC.on && !spec.pred;                       // collection is not recorded per product
+  if (hasC) { var T = R.C; for (var j = 0; j < T.ym.length; j++) { if (2000 + ((T.ym[j] / 12) | 0) !== Y || !mOk(pC, T.ym[j] % 12 + 1) || !cmask[T.c[j]]) continue; row(T.ym[j], -1).c += T.a[j] * U; } }
   return {rows:list, hasC:hasC, period:spec.month ? MONL[spec.month - 1] + ' ' + Y : span(pO.pl, Y)};
 }
 function bvBuild(){
@@ -2382,7 +2397,7 @@ function openBV(spec){
 function openDrill(spec){
   if (!IX || !spec) return;
   if (spec.k === 'BV') return openBV(spec);
-  var got = drillRows(spec), ft = spec.bud ? [budSeg(), F.cat].filter(Boolean).join(' · ') : filterText(), modes = drillModes(spec.k);
+  var got = drillRows(spec), ft = spec.bud ? [spec.k === 'C' ? budColl().bu : budSeg(), F.cat].filter(Boolean).join(' · ') : filterText(), modes = drillModes(spec.k);
   DS = {spec:spec, rows:got.rows, mode:modes[0]};
   dr.t.textContent = spec.title;
   dr.s.textContent = got.period + (ft ? '  ·  Filter: ' + ft.replace(/\s{2,}/g, ' ') : '') + '  ·  ' + (spec.k === 'P' ? 'Open order lines (ordered, not yet delivered).' : (IX.daily ? 'Daily' : 'Monthly') + ' totals per distributor' + (spec.k === 'C' ? '' : ' and product') + '. Single order lines are not kept in the dashboard.');
