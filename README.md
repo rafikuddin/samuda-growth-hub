@@ -12,6 +12,7 @@ Animated sales dashboard for Samuda Spec-Chem Limited (Adhesive, Thinner, DOP).
 | `index.html` | GitHub | The dashboard page with the sign-in screen |
 | `config.json` | GitHub | Holds the link of the sign-in service: the **Cloudflare Worker** link (Part 4). The Apps Script link does not go on GitHub |
 | `.github/workflows/update-dashboard.yml` | GitHub | Publishes the page after every change |
+| `.github/workflows/apply-update.yml` | GitHub | Updates the page when you upload `update.zip` (see "Updating with one file") |
 | `Code.gs` | Google Apps Script | Builds the data and checks the sign-in |
 | `worker.js` | Cloudflare Worker | Security gate in front of the Apps Script (Part 4) |
 
@@ -178,7 +179,18 @@ Year · Month · Period (YTD / MTD) · **Day** · Business Unit · Region · **A
 ## Details behind the numbers
 
 * **Pending delivery** lists open order lines with the real **sales order number** (`Order Number` of SALES_ORDER, e.g. `SO-SSCL-DF-2026-001540`) in the *Order ref* column. Run **Dashboard → Update data now** after installing the new `Code.gs` so the numbers are added to the data.
-* **Budget vs actual**: every card, ring, table row, bar and month of the chart opens a details panel. Sales budget, Order and Delivery cards, the TON rings, the segment / category rows and the "furthest behind / ahead" bars show budget, order and delivery side by side (by product, SKU group, category, segment or month; the month view adds Collection). The Collection card lists collections by distributor and month. Click a month in the chart to see that month only. *Download CSV* saves what is on screen.
+* **Budget vs actual**: every card, ring, table row, bar and month of the chart opens a details panel, and each one shows only its own data. *Sales budget* shows the budget; *Order vs budget* shows budget and order; *Delivery vs budget* shows budget and delivery; the two TON rings show budget TON against order or delivery TON; the *Collection* card lists collections by distributor and month. Table rows and the chart months show budget, order and delivery together (a chart month also gives that month's collection in the header line). Show by Product, SKU group, category, Business unit (BU) or month. *Download CSV* saves what is on screen.
+
+## Updating with one file (update.zip)
+
+Install once: in GitHub open **Add file → Create new file**, type the name `.github/workflows/apply-update.yml`, paste the contents of the file `apply-update.yml`, **Commit changes**. (GitHub does not let a zip change the `.github` folder, so this one file is added by hand.)
+
+After that, every update is one upload:
+
+1. **Add file → Upload files**, drop `update.zip` into the repository (the top level, next to `index.html`), **Commit changes**.
+2. Open the **Actions** tab. **Apply update.zip** unpacks it, replaces `index.html` (and `README.md` if it is in the zip), deletes `update.zip` and starts **Publish dashboard**. After about a minute the new page is live; the footer shows its version.
+
+Safety: a zip can change only `index.html` and `README.md`. `config.json` (your service link) and the `.github` folder are never touched, a zip with unsafe file names or without a real Growth Hub `index.html` is refused, and the red cross in the Actions tab says why. `Code.gs` and `worker.js` are not on GitHub: update those in Google Apps Script and Cloudflare as before.
 
 ## Notes
 

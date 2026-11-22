@@ -629,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '22-Nov-2026 · v41';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '22-Nov-2026 · v42';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -1153,7 +1153,7 @@ function budgetView(M){
   kpis.forEach(function(k){ if (k.ach != null) ins.push({k:k.ach >= 1 ? 'up' : (k.ach >= .9 ? 'warn' : 'down'), l:k.ach >= 1 ? 'ON BUDGET' : 'BELOW BUDGET', t:k.t.charAt(0) + k.t.slice(1).toLowerCase() + ' is ' + pc(k.ach) + ' of budget: ' + nf1.format(k.act) + ' Cr against ' + nf1.format(k.bud) + ' Cr (' + (k.gap >= 0 ? '+' : '−') + nf1.format(Math.abs(k.gap)) + ' Cr).'}); });
   var sg = segs.filter(function(x){ return x.b > 1 && x.da != null; });
   if (sg.length) { var bs = sg.reduce(function(a, x){ return x.da > a.da ? x : a; }), ws = sg.reduce(function(a, x){ return x.da < a.da ? x : a; });
-    ins.push({k:bs.da >= 1 ? 'up' : 'info', l:'BEST SEGMENT', t:'Best segment on delivery: ' + bs.n + ' at ' + pc(bs.da) + ' of budget.'});
+    ins.push({k:bs.da >= 1 ? 'up' : 'info', l:'BEST BU', t:'Best business unit on delivery: ' + bs.n + ' at ' + pc(bs.da) + ' of budget.'});
     if (ws !== bs) ins.push({k:ws.da < .9 ? 'down' : 'info', l:'FURTHEST BEHIND', t:'Furthest behind: ' + ws.n + ' at ' + pc(ws.da) + ' of budget (' + nf1.format(ws.gap) + ' Cr).'}); }
   base.days = {left:wLeft, total:wTot, hol:hLeft, closed:closed, end:endTxt, last:last ? fdate(last) : '', off:offTxt};
   base.bud = r4(bud); base.budFull = r4(bT.full); base.frac = frac; base.kpis = kpis; base.banner = notes.join('  ');
@@ -1161,7 +1161,7 @@ function budgetView(M){
   base.segs = segs; base.cats = cats; base.behind = behind; base.ahead = ahead; base.ins = ins;
   base.ton = {b:r2(bTon), o:r2(oTon), oa:r4(ach(oTon, bTon)), d:r2(dTon), da:r4(ach(dTon, bTon))};
   base.info = 'Budget ' + Y + ': ' + nf1.format(bsum(one, 1, 'v').mon.reduce(function(a, v){ return a + v; }, 0)) + ' Cr for the year';
-  base.foot = 'Budget = BUDGET_VALUE per month and product from the budget Sheets; the same sales budget is used for order, delivery and collection. Segment, category and SKU group come from SKU_MASTER. Volume = quantity × TON_COV_FACTOR.' + ' Remaining = budget − actual (never below 0). Daily required rate (RR) = remaining ÷ working days left to the end of ' + endTxt + '; working days leave out ' + (offTxt || 'no weekly day') + ' and the dates in the Holidays tab.';
+  base.foot = 'Budget = BUDGET_VALUE per month and product from the budget Sheets; the same sales budget is used for order, delivery and collection. Business unit (SKU_SEGMENT), category and SKU group come from SKU_MASTER. Volume = quantity × TON_COV_FACTOR.' + ' Remaining = budget − actual (never below 0). Daily required rate (RR) = remaining ÷ working days left to the end of ' + endTxt + '; working days leave out ' + (offTxt || 'no weekly day') + ' and the dates in the Holidays tab.';
   return base;
 }
 function monthsFor(k, pr, custFn, M){
@@ -1514,9 +1514,9 @@ var EXTCH = [];   // charts of the current added view, redrawn on resize
    Budget, order and delivery open the budget-vs-actual table; collection has no product, so it opens its own rows. */
 function budSpec(i, E){
   var p = E.period;
-  if (i === 0) return {k:'BV', sort:'b', title:'Sales budget · ' + p};
-  if (i === 1) return {k:'BV', sort:'o', title:'Order vs budget · ' + p};
-  if (i === 2) return {k:'BV', sort:'d', title:'Delivery vs budget · ' + p};
+  if (i === 0) return {k:'BV', show:'b', sort:'b', title:'Sales budget · ' + p};
+  if (i === 1) return {k:'BV', show:'o', sort:'o', title:'Order vs budget · ' + p};
+  if (i === 2) return {k:'BV', show:'d', sort:'d', title:'Delivery vs budget · ' + p};
   return F.cat ? null : {k:'C', bud:true, title:'Collection vs budget · ' + p};
 }
 function drillSpecs(key){
@@ -1550,7 +1550,7 @@ function rowDrills(key, E){
     var X = IX, pick = function(arr, idx, nm){ return function(s){ var g = idx[s]; return (g > -1 ? arr[g] : '(Unassigned)') === nm; }; };
     E.segs.forEach(function(x){ x._d = {k:'BV', sort:'b', title:'Budget vs actual · ' + x.n + ' · ' + E.period, pred:pick(X.seg, X.sSeg, x.n)}; });
     E.cats.forEach(function(x){ x._d = {k:'BV', sort:'b', title:'Budget vs actual · ' + x.n + ' · ' + E.period, pred:pick(X.cat, X.sCat, x.n)}; });
-    [E.behind, E.ahead].forEach(function(list){ list.forEach(function(x){ x._d = {k:'BV', sort:'b', title:'Budget vs actual · ' + x.n + ' · ' + E.period, pred:pick(X.grp, X.sGrp, x.n)}; }); });
+    [E.behind, E.ahead].forEach(function(list){ list.forEach(function(x){ x._d = {k:'BV', show:'d', sort:'d', title:'Budget vs actual · ' + x.n + ' · ' + E.period, pred:pick(X.grp, X.sGrp, x.n)}; }); });
   }
   if (key === 'pending') {
     E.bu.forEach(function(x){ x._d = {k:'P', title:'Pending delivery · ' + x.n, pred:function(c){ return (R.cust[c][6] ? R.cust[c][2] : 'Not in master') === x.n; }}; });
@@ -1627,24 +1627,24 @@ function renderExt(key){
       '<div class="tsub">' + esc(E.period) + ' · ' + nf2.format(E.ton.b) + ' TON</div><div class="rrl">' + (DY.closed ? 'Period ended' : '<b>' + DY.left + '</b> of ' + DY.total + ' working days left') + '</div></article>';
     var rrRows = E.kpis.map(function(k, i){ return {n:k.t.charAt(0) + k.t.slice(1).toLowerCase(), b:k.bud, a:k.act, ach:k.ach, rem:k.rem, days:k.rem == null ? null : DY.left, rr:k.rr, _d:budSpec(i + 1, E)}; });
     var rrCols = [{h:'', k:'n', f:'name', dot:function(r, i){ return BC[i]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Actual Cr', k:'a', f:'cr'}, {h:'Ach.', k:'ach', f:'ach'}, {h:'Remaining Cr', k:'rem', f:'rem'}, {h:'Days left', k:'days', f:'n0'}, {h:'RR / day', k:'rr', f:'rr'}];
-    var segCols = [{h:'Segment', k:'n', f:'name', dot:function(r, i){ return bc(r.n, i); }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, {h:'Remaining', k:'orem', f:'rem'}, {h:'Order RR / day', k:'orr', f:'rr'}, {h:'Delivery Cr', k:'d', f:'cr'}, {h:'Remaining', k:'drem', f:'rem'}, {h:'Delivery RR / day', k:'drr', f:'rr'}];
+    var segCols = [{h:'Business unit', k:'n', f:'name', dot:function(r, i){ return bc(r.n, i); }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, {h:'Remaining', k:'orem', f:'rem'}, {h:'Order RR / day', k:'orr', f:'rr'}, {h:'Delivery Cr', k:'d', f:'cr'}, {h:'Remaining', k:'drem', f:'rem'}, {h:'Delivery RR / day', k:'drr', f:'rr'}];
     var rrTot = function(rows){ var t = rows.reduce(function(a, x){ a.b += x.b || 0; a.o += x.o || 0; a.d += x.d || 0; a.orem += x.orem || 0; a.drem += x.drem || 0; return a; }, {n:'Total', b:0, o:0, d:0, orem:0, drem:0}); t.orr = DY.left > 0 ? t.orem / DY.left : (t.orem <= 0 ? 0 : null); t.drr = DY.left > 0 ? t.drem / DY.left : (t.drem <= 0 ? 0 : null); return t; };
     var mser = [{n:'Order', c:'var(--c1)', v:E.mon.order}, {n:'Delivery', c:'var(--c2)', v:E.mon.delivery}].concat(E.mon.collection ? [{n:'Collection', c:'var(--c4)', v:E.mon.collection}] : [], [{n:'Budget', c:'var(--good)', v:E.mon.budget, line:true}]);
     EXTCH.push({id:'cBud', series:mser, unit:'Cr', drill:function(i){ return {k:'BV', month:i + 1, sort:'b', title:'Budget vs actual · ' + MONL[i] + ' ' + E.year}; }});
     var acol = function(k){ return {h:'Ach.', k:k, f:'ach'}; };
-    var tcols = function(first){ return [{h:first, k:'n', f:'name', dot:function(r, i){ return first === 'Segment' ? bc(r.n, i) : PALC[i % PALC.length]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, acol('oa'), {h:'Delivery Cr', k:'d', f:'cr'}, acol('da'), {h:'Gap Cr', k:'gap', f:'gap'}, {h:'Budget TON', k:'bt', f:'t2'}, {h:'Delivery TON', k:'dt', f:'t2'}, acol('ta')]; };
+    var tcols = function(first){ return [{h:first, k:'n', f:'name', dot:function(r, i){ return first === 'Business unit' ? bc(r.n, i) : PALC[i % PALC.length]; }}, {h:'Budget Cr', k:'b', f:'cr'}, {h:'Order Cr', k:'o', f:'cr'}, acol('oa'), {h:'Delivery Cr', k:'d', f:'cr'}, acol('da'), {h:'Gap Cr', k:'gap', f:'gap'}, {h:'Budget TON', k:'bt', f:'t2'}, {h:'Delivery TON', k:'dt', f:'t2'}, acol('ta')]; };
     var tot = function(rows){ var t = rows.reduce(function(a, x){ a.b += x.b || 0; a.o += x.o || 0; a.d += x.d || 0; a.bt += x.bt || 0; a.dt += x.dt || 0; return a; }, {n:'Total', b:0, o:0, d:0, bt:0, dt:0}); t.oa = t.b ? t.o / t.b : null; t.da = t.b ? t.d / t.b : null; t.gap = t.d - t.b; t.ta = t.bt ? t.dt / t.bt : null; return t; };
     return h + bn + '<section class="tiles four">' + budTile + E.kpis.map(achTile).join('') + '</section>' +
       '<section class="p2">' + panel('Budget vs order, delivery & collection by month (Cr)', legendHTML(mser) + '<div class="chart" id="cBud"></div>', 'Bars = actual · Line = budget') +
         panel('Volume vs budget (TON)', '<div class="rings">' + [['Order', E.ton.o, E.ton.oa, 'var(--c3)', 'ot'], ['Delivery', E.ton.d, E.ton.da, 'var(--c5)', 'dt']].map(function(x){ var p = Math.min(1, x[2] || 0) * 100;
-          return '<div class="rg dr" role="button" tabindex="0" title="Show the data behind this" data-dr="' + (DRL.push({k:'BV', sort:x[4], title:x[0] + ' volume vs budget (TON) · ' + E.period}) - 1) + '" style="--c:' + x[3] + '"><div class="ringw"><svg viewBox="0 0 80 80" aria-hidden="true"><g transform="rotate(-90 40 40)"><circle class="tr" cx="40" cy="40" r="34" stroke-width="7"/><circle class="ra" cx="40" cy="40" r="34" stroke-width="7" stroke="' + x[3] + '" pathLength="100" stroke-dasharray="' + p.toFixed(2) + ' 100" data-to="' + p.toFixed(2) + '"/></g></svg>' +
+          return '<div class="rg dr" role="button" tabindex="0" title="Show the data behind this" data-dr="' + (DRL.push({k:'BV', show:x[4], sort:x[4], title:x[0] + ' volume vs budget (TON) · ' + E.period}) - 1) + '" style="--c:' + x[3] + '"><div class="ringw"><svg viewBox="0 0 80 80" aria-hidden="true"><g transform="rotate(-90 40 40)"><circle class="tr" cx="40" cy="40" r="34" stroke-width="7"/><circle class="ra" cx="40" cy="40" r="34" stroke-width="7" stroke="' + x[3] + '" pathLength="100" stroke-dasharray="' + p.toFixed(2) + ' 100" data-to="' + p.toFixed(2) + '"/></g></svg>' +
             '<div class="rc ' + achCls(x[2]) + '">' + (x[2] == null ? 'n/a' : num(x[2], 'pc0')) + '</div></div><b>' + x[0] + ' TON</b><small>' + nf2.format(x[1]) + ' of ' + nf2.format(E.ton.b) + ' TON</small></div>'; }).join('') + '</div>') + '</section>' +
       '<section class="p2">' + panel('Remaining budget & daily required rate (RR)', tableHTML(rrCols, rrRows), DY.closed ? 'Period ended' : 'RR = remaining ÷ ' + DY.left + ' working days') +
         panel('How the days are counted', hlHTML([{k:'info', t:'Target: the full budget of ' + E.period + '.'}, {k:'info', t:'Data up to ' + DY.last + '.'},
           {k:DY.closed ? 'warn' : 'up', t:DY.closed ? 'The period has ended: no working days left.' : DY.left + ' of ' + DY.total + ' working days are left to the end of ' + DY.end + '.'},
           {k:'info', t:'Not counted: ' + (DY.off || 'no weekly day off') + ', and the dates in the Holidays tab' + (DY.hol ? ' (' + DY.hol + ' still to come in this period)' : '') + '.'}])) + '</section>' +
-      panel('Remaining budget & daily RR by segment', tableHTML(segCols, E.segs, rrTot(E.segs)), 'Remaining = budget − actual · RR in Cr per working day') +
-      panel('Budget vs actual by segment', tableHTML(tcols('Segment'), E.segs, tot(E.segs)), 'Gap = delivery − budget') +
+      panel('Remaining budget & daily RR by business unit', tableHTML(segCols, E.segs, rrTot(E.segs)), 'Remaining = budget − actual · RR in Cr per working day') +
+      panel('Budget vs actual by business unit', tableHTML(tcols('Business unit'), E.segs, tot(E.segs)), 'Gap = delivery − budget') +
       '<section class="p2 even">' + panel('Furthest behind budget (Cr)', E.behind.length ? hbarHTML(E.behind, {signed:true, c:'var(--bad)'}) : '<div class="empty">Nothing is behind budget.</div>', 'SKU groups · delivery − budget') +
         panel('Ahead of budget (Cr)', E.ahead.length ? hbarHTML(E.ahead, {signed:true, c:'var(--good)'}) : '<div class="empty">Nothing is ahead of budget yet.</div>', 'SKU groups · delivery − budget') + '</section>' +
       panel('Budget vs actual by product category', tableHTML(tcols('Category'), E.cats, tot(E.cats))) +
@@ -2211,7 +2211,7 @@ function drillRows(spec){
 var DMODES = {
   dp:  {n:'Distributor × Product', key:function(r){ return r.c + '|' + r.s; }, cols:['Distributor', 'Code', 'BU', 'Region', 'Product', 'Category'], cell:function(r, C, S){ return [C[1], C[0], C[2], regName(C[3]), S[1], S[4]]; }},
   d:   {n:'Distributor', key:function(r){ return r.c; }, cols:['Distributor', 'Code', 'BU', 'Region', 'Area', 'Base'], cell:function(r, C){ return [C[1], C[0], C[2], regName(C[3]), C[4], C[7] || '']; }},
-  p:   {n:'Product', key:function(r){ return r.s; }, cols:['Product', 'Code', 'Segment', 'Category'], cell:function(r, C, S){ return [S[1], S[0], S[2], S[4]]; }},
+  p:   {n:'Product', key:function(r){ return r.s; }, cols:['Product', 'Code', 'BU', 'Category'], cell:function(r, C, S){ return [S[1], S[0], S[2], S[4]]; }},
   m:   {n:'Month', key:function(r){ return r.ym; }, cols:['Month'], cell:function(r){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0))]; }, sort:'key'},
   md:  {n:'Month × Distributor', key:function(r){ return r.ym + '|' + r.c; }, cols:['Month', 'Distributor', 'Code', 'BU', 'Region'], cell:function(r, C){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), C[1], C[0], C[2], regName(C[3])]; }},
   all: {n:'All detail (month × distributor × product)', key:function(r){ return r.ym + '|' + r.c + '|' + r.s; }, cols:['Month', 'Distributor', 'Code', 'Product', 'Category'], cell:function(r, C, S){ return [MONS[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0)), C[1], C[0], S[1], S[4]]; }},
@@ -2271,19 +2271,24 @@ function drillShow(reset){
 }
 /* ---- budget vs actual table (Budget page): budget, order and delivery side by side per product, group, category, segment or month ---- */
 var BVM = {
-  p:{n:'Product', cols:['Product', 'Code', 'Segment', 'Category'], key:function(r){ return r.s; }, cell:function(r){ var S = IX.R.sku[r.s]; return [S[1], S[0], S[2] || '(Unassigned)', S[4] || '(Unassigned)']; }},
-  g:{n:'SKU group', cols:['SKU group', 'Segment'], key:function(r){ return IX.sGrp[r.s]; }, cell:function(r){ var g = IX.sGrp[r.s], sg = g > -1 ? IX.grpSeg[g] : -1; return [g > -1 ? IX.grp[g] : '(Unassigned)', sg > -1 ? IX.seg[sg] : '(Unassigned)']; }},
+  p:{n:'Product', cols:['Product', 'Code', 'BU', 'Category'], key:function(r){ return r.s; }, cell:function(r){ var S = IX.R.sku[r.s]; return [S[1], S[0], S[2] || '(Unassigned)', S[4] || '(Unassigned)']; }},
+  g:{n:'SKU group', cols:['SKU group', 'BU'], key:function(r){ return IX.sGrp[r.s]; }, cell:function(r){ var g = IX.sGrp[r.s], sg = g > -1 ? IX.grpSeg[g] : -1; return [g > -1 ? IX.grp[g] : '(Unassigned)', sg > -1 ? IX.seg[sg] : '(Unassigned)']; }},
   c:{n:'Product category', cols:['Category'], key:function(r){ return IX.sCat[r.s]; }, cell:function(r){ var c = IX.sCat[r.s]; return [c > -1 ? IX.cat[c] : '(Unassigned)']; }},
-  s:{n:'Segment', cols:['Segment'], key:function(r){ return IX.sSeg[r.s]; }, cell:function(r){ var s = IX.sSeg[r.s]; return [s > -1 ? IX.seg[s] : '(Unassigned)']; }},
+  s:{n:'Business unit (BU)', cols:['BU'], key:function(r){ return IX.sSeg[r.s]; }, cell:function(r){ var s = IX.sSeg[r.s]; return [s > -1 ? IX.seg[s] : '(Unassigned)']; }},
   m:{n:'Month', cols:['Month'], key:function(r){ return r.ym; }, cell:function(r){ return [MONL[r.ym % 12] + ' ' + (2000 + ((r.ym / 12) | 0))]; }, sort:'key'}
 };
 var BVF = ['b', 'o', 'd', 'c', 'bt', 'ot', 'dt'];
-function bvCols(hasC){
+function bvCols(hasC, show){
+  var x = {o:{n:'Order', v:'o', t:'ot'}, ot:{n:'Order', t:'ot'}, d:{n:'Delivery', v:'d', t:'dt'}, dt:{n:'Delivery', t:'dt'}}[show];
+  if (show === 'b') return [{h:'Budget (৳)', s:'b'}, {h:'Budget TON', s:'bt', t:1}];
+  if (show === 'ot' || show === 'dt') return [{h:'Budget TON', s:'bt', t:1}, {h:x.n + ' TON', s:x.t, t:1}, {h:'TON ach. %', r:[x.t, 'bt']}, {h:'Gap TON (' + x.n.toLowerCase() + ' − budget)', g:[x.t, 'bt'], t:1}];
+  if (x) return [{h:'Budget (৳)', s:'b'}, {h:x.n + ' (৳)', s:x.v}, {h:x.n + ' ach. %', r:[x.v, 'b']}, {h:'Gap (' + x.n.toLowerCase() + ' − budget) (৳)', g:[x.v, 'b']}, {h:'Budget TON', s:'bt', t:1}, {h:x.n + ' TON', s:x.t, t:1}, {h:'TON ach. %', r:[x.t, 'bt']}];
   return [{h:'Budget (৳)', s:'b'}, {h:'Order (৳)', s:'o'}, {h:'Delivery (৳)', s:'d'}].concat(hasC ? [{h:'Collection (৳)', s:'c'}] : [],
-    [{h:'Order ach. %', r:['o', 'b']}, {h:'Delivery ach. %', r:['d', 'b']}, {h:'Gap (৳)', g:['d', 'b']}, {h:'Budget TON', s:'bt', t:1}, {h:'Order TON', s:'ot', t:1}, {h:'Delivery TON', s:'dt', t:1}, {h:'TON ach. %', r:['dt', 'bt']}]);
+    [{h:'Order ach. %', r:['o', 'b']}, {h:'Delivery ach. %', r:['d', 'b']}, {h:'Gap (delivery − budget) (৳)', g:['d', 'b']}, {h:'Budget TON', s:'bt', t:1}, {h:'Order TON', s:'ot', t:1}, {h:'Delivery TON', s:'dt', t:1}, {h:'TON ach. %', r:['dt', 'bt']}]);
 }
+var BVSHOW = {b:['b', 'bt'], o:['b', 'o', 'bt', 'ot'], d:['b', 'd', 'bt', 'dt'], ot:['bt', 'ot'], dt:['bt', 'dt']};
 function bvVal(col, o){ return col.s ? o[col.s] : (col.r ? (o[col.r[1]] > 0 ? o[col.r[0]] / o[col.r[1]] : null) : o[col.g[0]] - o[col.g[1]]); }
-function bvFmt(col, v){ return v == null ? '–' : (col.r ? nf1.format(v * 100) + '%' : (col.g ? (v >= 0 ? '+' : '−') + nfT.format(Math.abs(v)) : (col.t ? nfN : nfT).format(v))); }
+function bvFmt(col, v){ return v == null ? '–' : (col.r ? nf1.format(v * 100) + '%' : (col.g ? (v >= 0 ? '+' : '−') + (col.t ? nfN : nfT).format(Math.abs(v)) : (col.t ? nfN : nfT).format(v))); }
 function bvCls(col, v){ return v == null ? '' : (col.r ? (v >= 1 ? 'hi' : (v < .9 ? 'lo' : '')) : (col.g ? (v >= 0 ? 'hi' : 'lo') : '')); }
 function bvRows(spec){
   var X = IX, R = X.R, B = R.B, M = masks(), Y = F.year, U = X.U, map = {}, list = [];
@@ -2314,8 +2319,10 @@ function bvBuild(){
     if (!e) { e = g[k] = {cells:md.cell(r), k:k, b:0, o:0, d:0, c:0, bt:0, ot:0, dt:0}; list.push(e); }
     BVF.forEach(function(f){ e[f] += r[f]; });
   });
+  var sh = DS.spec.show, rel = BVSHOW[sh];
+  if (rel) list = list.filter(function(e){ return rel.some(function(f){ return e[f] !== 0; }); });      // a card shows only its own measure: leave out rows with nothing in it
   list.forEach(function(e){ e.text = e.cells.join(' ').toLowerCase(); });
-  DS.ncols = bvCols(DS.hasC && month); DS.cols = md.cols.concat(DS.ncols.map(function(c){ return c.h; })); DS.nText = md.cols.length;
+  DS.ncols = bvCols(DS.hasC && month, sh); DS.cols = md.cols.concat(DS.ncols.map(function(c){ return c.h; })); DS.nText = md.cols.length;
   DS.keyCols = md.sort === 'key' ? 1 : 0; DS.date = false; DS.numcol = undefined; DS.hasT = true; DS.list = list;
   var si = 0; DS.ncols.forEach(function(c, i){ if (c.s === DS.spec.sort) si = i; });
   DS.sort = md.sort === 'key' ? {c:0, d:1} : {c:DS.nText + si, d:-1};
@@ -2336,8 +2343,11 @@ function bvShow(reset){
   h += '</tbody><tfoot><tr><td colspan="' + DS.nText + '">Total · ' + nf0.format(f.length) + ' row' + (f.length === 1 ? '' : 's') + '</td>' + DS.ncols.map(function(col){ return numTd(col, T); }).join('') + '</tr></tfoot></table>';
   dr.w.innerHTML = f.length ? h : '<div class="empty">Nothing matches.</div>';
   if (reset) dr.w.scrollTop = 0;
-  var pc = function(a, b){ return b > 0 ? ' (' + nf1.format(a / b * 100) + '%)' : ''; };
-  dr.sum.innerHTML = 'Budget <b>' + nf2.format(T.b / 1e7) + ' Cr</b> · Order <b>' + nf2.format(T.o / 1e7) + ' Cr</b>' + pc(T.o, T.b) + ' · Delivery <b>' + nf2.format(T.d / 1e7) + ' Cr</b>' + pc(T.d, T.b) + ' · <b>' + nf2.format(T.bt) + '</b> TON budget';
+  var pc = function(a, b){ return b > 0 ? ' (' + nf1.format(a / b * 100) + '%)' : ''; }, cr = function(v){ return '<b>' + nf2.format(v / 1e7) + ' Cr</b>'; }, sh = DS.spec.show;
+  dr.sum.innerHTML = sh === 'b' ? 'Budget ' + cr(T.b) + ' · <b>' + nf2.format(T.bt) + '</b> TON'
+    : (sh === 'o' || sh === 'd') ? 'Budget ' + cr(T.b) + ' · ' + (sh === 'o' ? 'Order ' + cr(T.o) + pc(T.o, T.b) : 'Delivery ' + cr(T.d) + pc(T.d, T.b)) + ' · <b>' + nf2.format(sh === 'o' ? T.ot : T.dt) + '</b> of <b>' + nf2.format(T.bt) + '</b> TON budget'
+    : (sh === 'ot' || sh === 'dt') ? 'Budget <b>' + nf2.format(T.bt) + '</b> TON · ' + (sh === 'ot' ? 'Order' : 'Delivery') + ' <b>' + nf2.format(T[sh]) + '</b> TON' + pc(T[sh], T.bt)
+    : 'Budget ' + cr(T.b) + ' · Order ' + cr(T.o) + pc(T.o, T.b) + ' · Delivery ' + cr(T.d) + pc(T.d, T.b) + (DS.hasC && DS.spec.month ? ' · Collection ' + cr(DS.raw.reduce(function(a, r){ return a + (r.s === -1 ? r.c : 0); }, 0)) : '') + ' · <b>' + nf2.format(T.bt) + '</b> TON budget';
   dr.n.textContent = 'Showing ' + nf0.format(Math.min(DS.shown, f.length)) + ' of ' + nf0.format(f.length) + ' rows';
   dr.more.style.display = f.length > DS.shown ? '' : 'none';
 }
@@ -2345,7 +2355,7 @@ function openBV(spec){
   var got = bvRows(spec), modes = spec.month ? ['p', 'g', 'c', 's'] : ['p', 'g', 'c', 's', 'm'];
   DS = {spec:spec, bv:true, raw:got.rows, hasC:got.hasC, mode:'p'};
   dr.t.textContent = spec.title;
-  dr.s.textContent = got.period + (F.cat ? '  ·  Filter: ' + F.cat : '') + '  ·  Budget, order and delivery side by side. Ach. = actual ÷ budget · Gap = delivery − budget. The budget is set per product, so Business Unit, Region, Area, Base, Distributor and Day filters are not applied.';
+  dr.s.textContent = got.period + (F.cat ? '  ·  Filter: ' + F.cat : '') + '  ·  ' + ({b:'Budget only.', o:'Budget against order.', d:'Budget against delivery.', ot:'Budget TON against order TON.', dt:'Budget TON against delivery TON.'}[spec.show] || 'Budget, order and delivery side by side. Gap = delivery − budget.') + ' Ach. = actual ÷ budget. The budget is set per product, so Business Unit, Region, Area, Base, Distributor and Day filters are not applied.';
   dr.m.innerHTML = modes.map(function(m){ return opt(m, BVM[m].n, DS.mode); }).join('');
   dr.q.value = ''; dr.q.placeholder = 'Product, group, category, code…'; bvBuild(); dr.ov.classList.add('on');
 }
