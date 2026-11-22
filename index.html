@@ -629,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '22-Nov-2026 · v42';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '22-Nov-2026 · v43';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -767,15 +767,29 @@ function prep(R){
 }
 
 /* ---------- filters ---------- */
+/* A business unit that exists only as a product line (Wood Lacquer): no distributor belongs to it, so it filters by product (SKU_SEGMENT) instead of by customer. */
+function prodBU(){
+  if (!F.bu || IX.seg.indexOf(F.bu) < 0) return false;
+  if (!IX.cbuSet) { IX.cbuSet = {}; IX.R.cust.forEach(function(c){ if (c[6]) IX.cbuSet[c[2]] = 1; }); }
+  return !IX.cbuSet[F.bu];
+}
+function pfn(){ return F.cat && prodBU() ? 'Product category and the ' + F.bu + ' business unit' : (prodBU() ? 'The ' + F.bu + ' business unit (a product line)' : 'Product category'); }
+/* Budget page: the budget is per product, so Business Unit there means the product line (SKU_SEGMENT: Adhesive, DOP, Thinner, Wood Lacquer) */
+function budSeg(){ return F.bu && IX.seg.indexOf(F.bu) > -1 ? F.bu : ''; }
+function budMask(M){
+  var sg = budSeg(), X = IX; if (!sg) return {s:M.s, sOn:M.sOn};
+  var s = new Uint8Array(M.s.length); for (var j = 0; j < s.length; j++) s[j] = M.s[j] && X.seg[X.sSeg[j]] === sg ? 1 : 0;
+  return {s:s, sOn:true};
+}
 function masks(){
-  var X = IX, R = X.R, n = R.cust.length, cm = new Uint8Array(n), sm = new Uint8Array(R.sku.length), cOn = !!(F.bu || F.reg || F.ter || F.base || F.dist);
+  var X = IX, R = X.R, n = R.cust.length, cm = new Uint8Array(n), sm = new Uint8Array(R.sku.length), pBU = prodBU(), cOn = !!((F.bu && !pBU) || F.reg || F.ter || F.base || F.dist);
   for (var i = 0; i < n; i++) {
     var c = R.cust[i], ok = 1;
-    if (cOn) ok = (!F.dist || c[0] === F.dist) && (!F.bu || (c[6] && c[2] === F.bu)) && (!F.reg || (c[6] && regName(c[3]) === F.reg)) && (!F.ter || (c[6] && c[4] === F.ter)) && (!F.base || (c[6] && c[7] === F.base)) ? 1 : 0;
+    if (cOn) ok = (!F.dist || c[0] === F.dist) && (!F.bu || pBU || (c[6] && c[2] === F.bu)) && (!F.reg || (c[6] && regName(c[3]) === F.reg)) && (!F.ter || (c[6] && c[4] === F.ter)) && (!F.base || (c[6] && c[7] === F.base)) ? 1 : 0;
     cm[i] = ok;
   }
-  for (var j = 0; j < sm.length; j++) sm[j] = !F.cat || R.sku[j][4] === F.cat ? 1 : 0;
-  return {c:cm, s:sm, cOn:cOn, sOn:!!F.cat, day:F.day && X.daily ? +F.day : 0, any:cOn || !!F.cat || !!F.day};
+  for (var j = 0; j < sm.length; j++) sm[j] = (!F.cat || R.sku[j][4] === F.cat) && (!pBU || X.seg[X.sSeg[j]] === F.bu) ? 1 : 0;
+  return {c:cm, s:sm, cOn:cOn, sOn:!!F.cat || pBU, day:F.day && X.daily ? +F.day : 0, any:cOn || !!F.cat || pBU || !!F.day};
 }
 function filterText(){
   var t = [];
@@ -921,7 +935,7 @@ function growthView(k, M){
   else if (F.month === 'auto' && F.span !== 'mtd' && pr.a > 1) ban.push('ℹ  Like-for-like from ' + MONL[pr.a - 1] + ': ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
   else if (!pr.same) ban.push('ℹ  Growth compares ' + span(pr.ll) + ' only: ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
   if (la && lany && lany > la && la.getFullYear() === Y && pr.b >= la.getMonth() + 1) ban.push((k === 'O' ? 'Total Amount' : 'The amount') + ' is blank for rows after ' + fdate(la) + ', so the report stops at ' + MONL[la.getMonth()] + ' ' + la.getFullYear() + '.');
-  if (isC && M.sOn) ban.push('ℹ  Product category does not apply here: collection is booked per customer, not per product.');
+  if (isC && M.sOn) ban.push('ℹ  ' + pfn() + ' cannot be applied here: collection is booked per customer, not per product.');
   if (M.any && natCY === 0 && natPY === 0) ban = ['⚠  Nothing matches this filter in ' + pcy + '. Change or reset the filters.'];
   var ins = [];
   var gNat = natPY > 0 ? natLC / natPY - 1 : null, scope = isC ? 'customers' : 'products';
@@ -960,7 +974,7 @@ function extViews(M){
   var asof = fdate(pd([R.meta.order.lastAny, R.meta.delivery.lastAny, R.meta.collection.lastAny].sort().pop()));
   var mon = function(A, pr){ var a = []; for (var m = 1; m <= 12; m++) a.push(m <= pr.b ? r4(A.mon[m]) : null); return a; };
   var pmon = function(A, k){ var a = []; for (var m = 1; m <= 12; m++) a.push(pyCovered(k, Y, m) ? r4(A.pmon[m]) : null); return a; };
-  var catNote = M.sOn ? ' Product category does not apply to collection (booked per customer), so collection here is for all products.' : '';
+  var catNote = M.sOn ? ' ' + pfn() + ' cannot be applied to collection (booked per customer), so collection here is for all products.' : '';
   // overview
   var gO = O.py[0] > 0 ? O.lc[0] / O.py[0] - 1 : null, gC = C.py[0] > 0 ? C.lc[0] / C.py[0] - 1 : null, gD = D.py[0] > 0 ? D.lc[0] / D.py[0] - 1 : null;
   var hl = [];
@@ -973,7 +987,7 @@ function extViews(M){
   if (cutO && (gO != null || gC != null)) hl.push({k:'info', t:'Same-date comparison: ' + MONL[cutO.m - 1] + ' is counted up to the ' + ordinal(cutO.day) + ' in both years (data up to ' + fdate(cutO.la) + ').'});
   else if (runO && (gO != null || gC != null)) hl.push({k:'info', t:MONL[pO.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(runO) + ') while ' + (Y - 1) + ' has the full month, so growth looks lower than it is.'});
   if (gD == null) hl.push({k:'info', t:'Delivery growth shows n/a until ' + (Y - 1) + ' delivery rows are added to the workbook.'});
-  if (M.sOn) hl.push({k:'info', t:'Product category does not apply to collection (booked per customer); collection shows all products.'});
+  if (M.sOn) hl.push({k:'info', t:pfn() + ' cannot be applied to collection (booked per customer); collection shows all products.'});
   var overview = {title:'Executive Overview  ·  ' + P, sub:'ADHESIVE & GLUE DIVISION  ·  ORDER · DELIVERY · COLLECTION · VOLUME' + fsub,
     cmp:'Growth compared like-for-like with ' + (Y - 1) + '  ·  Value in Crore (1 Cr = 10,000,000 BDT)', info:'Data up to ' + asof, period:P,
     kpis:[kt('ORDER VALUE', O, pO), kt('DELIVERY VALUE', D, pD), kt('COLLECTION', C, pC), kt('SALES VOLUME (ORDER)', OT, pO, 'TON')],
@@ -1091,13 +1105,13 @@ function extViews(M){
 function budgetView(M){
   var X = IX, R = X.R, B = R.B, Y = F.year;
   var pO = period('O', false), pD = period('D', false), pC = period('C', false), P = pO.P, b = pO.b, Pn = span(pO.pl, Y);
-  var base = {title:'Budget vs Actual  ·  ' + Pn, sub:'SALES BUDGET  ·  ORDER · DELIVERY · COLLECTION' + (F.cat ? '  ·  FILTER: ' + F.cat : ''), cmp:'Achievement = actual ÷ budget  ·  Value in Crore', info:'', period:Pn, year:Y};
+  var base = {title:'Budget vs Actual  ·  ' + Pn, sub:'SALES BUDGET  ·  ORDER · DELIVERY · COLLECTION' + (F.cat || budSeg() ? '  ·  FILTER: ' + [budSeg(), F.cat].filter(Boolean).join(' · ') : ''), cmp:'Achievement = actual ÷ budget  ·  Value in Crore', info:'', period:Pn, year:Y};
   var has = false; if (B && B.ym) for (var z = 0; z < B.ym.length; z++) if (2000 + ((B.ym[z] / 12) | 0) === Y) { has = true; break; }
   if (R.scope) { base.none = true; base.msg = 'The sales budget is set for the whole company, not per business unit, region or area, so this page is shown only to users with full access.'; return base; }
   if (!has) { base.none = true; base.msg = B && B.ym && B.ym.length ? 'There is no budget for ' + Y + ' in the data. Add the ' + Y + ' budget Sheet to the Sources tab, then update the data.' : 'No budget has been loaded yet. Add the budget Google Sheets to the Sources tab of the Admin Sheet, then run Dashboard → Update data now.'; return base; }
   // budget is per product, so customer filters cannot apply here; product category does
   var allC = new Uint8Array(R.cust.length); allC.fill(1);
-  var Ms = {c:allC, s:M.s, sOn:M.sOn, cOn:false, any:M.sOn}, Mc = {c:allC, s:M.s, sOn:false};
+  var BM = budMask(M), Ms = {c:allC, s:BM.s, sOn:BM.sOn, cOn:false, any:BM.sOn}, Mc = {c:allC, s:M.s, sOn:false};
   // the budget is always the full target of the period; working days tell how much time is left to reach it
   var last = null; ['O','D','C'].forEach(function(k){ var la = pd(X.meta[k].lastAmt || X.meta[k].lastAny); if (la && (!last || la > last)) last = la; });
   var cal = R.cal || {off:[5, 6], hol:[]}, hol = {}; (cal.hol || []).forEach(function(d){ hol[d] = 1; });
@@ -1110,7 +1124,7 @@ function budgetView(M){
     var a = new Float64Array(n), mon = new Float64Array(13), full = 0;
     for (var i = 0; i < B.ym.length; i++) {
       if (2000 + ((B.ym[i] / 12) | 0) !== Y) continue;
-      var s = B.s[i]; if (M.sOn && !M.s[s]) continue;
+      var s = B.s[i]; if (BM.sOn && !BM.s[s]) continue;
       var m = B.ym[i] % 12 + 1, v = f === 't' ? B.t[i] / 1000 : B.v[i] / CRD;
       mon[m] += v; if (!P[m]) continue; full += v;
       var k = keyOf(s); if (k > -1) a[k] += v;
@@ -1123,7 +1137,7 @@ function budgetView(M){
   var ach = function(a, bv){ return bv > 0 ? a / bv : null; };
   var rrOf = function(rem){ return rem == null ? null : (rem <= 0 ? 0 : (wLeft > 0 ? rem / wLeft : null)); };      // required per working day
   var kp = function(t, a, on){ var rem = on ? Math.max(0, bud - a) : null; return {t:t, act:on ? r4(a) : null, bud:r4(bud), ach:on ? r4(ach(a, bud)) : null, gap:on ? r4(a - bud) : null, rem:r4(rem), rr:r4(rrOf(rem))}; };
-  var kpis = [kp('ORDER', O.cy[0], true), kp('DELIVERY', D.cy[0], true), kp('COLLECTION', C.cy[0], !M.sOn)];
+  var kpis = [kp('ORDER', O.cy[0], true), kp('DELIVERY', D.cy[0], true), kp('COLLECTION', C.cy[0], !BM.sOn)];
   var monA = function(A){ var a = []; for (var m = 1; m <= 12; m++) a.push(m <= b ? r4(A.mon[m]) : null); return a; };
   var monB = []; for (var m2 = 1; m2 <= 12; m2++) monB.push(bT.mon[m2] > 0 ? r4(bT.mon[m2]) : null);
   function table(names, keyOf){
@@ -1146,9 +1160,9 @@ function budgetView(M){
   var endTxt = MONL[b - 1] + ' ' + Y;
   notes.push(closed ? 'ℹ  This period has ended (data up to ' + fdate(last) + '), so there are no working days left and no daily required rate.'
     : 'ℹ  Data up to ' + fdate(last) + '  ·  ' + wLeft + ' working day' + (wLeft === 1 ? '' : 's') + ' left to the end of ' + endTxt + ' (' + (offTxt || 'no weekly day off') + (hLeft ? ' and ' + hLeft + ' holiday' + (hLeft === 1 ? '' : 's') : '') + ' not counted).');
-  if (M.cOn) notes.push('ℹ  The budget is set per product, so the Business Unit, Region, Area, Base and Distributor filters are not applied on this page.');
+  if (F.reg || F.ter || F.base || F.dist || (F.bu && !budSeg())) notes.push('ℹ  The budget is set per product, so the ' + (budSeg() ? '' : 'Business Unit, ') + 'Region, Area, Base and Distributor filters are not applied on this page.' + (budSeg() ? ' Business Unit here means the product line (' + budSeg() + ').' : ''));
   if (F.day && IX.daily) notes.push('ℹ  The budget is set per month, so the Day filter is not applied on this page.');
-  if (M.sOn) notes.push('ℹ  Collection is not recorded per product, so it is not shown for one product category.');
+  if (BM.sOn) notes.push('ℹ  Collection is not recorded per product, so it is not shown for one ' + (budSeg() ? 'business unit or ' : '') + 'product category.');
   var ins = [], pc = function(v){ return nf2.format(v * 100) + '%'; };
   kpis.forEach(function(k){ if (k.ach != null) ins.push({k:k.ach >= 1 ? 'up' : (k.ach >= .9 ? 'warn' : 'down'), l:k.ach >= 1 ? 'ON BUDGET' : 'BELOW BUDGET', t:k.t.charAt(0) + k.t.slice(1).toLowerCase() + ' is ' + pc(k.ach) + ' of budget: ' + nf1.format(k.act) + ' Cr against ' + nf1.format(k.bud) + ' Cr (' + (k.gap >= 0 ? '+' : '−') + nf1.format(Math.abs(k.gap)) + ' Cr).'}); });
   var sg = segs.filter(function(x){ return x.b > 1 && x.da != null; });
@@ -1157,7 +1171,7 @@ function budgetView(M){
     if (ws !== bs) ins.push({k:ws.da < .9 ? 'down' : 'info', l:'FURTHEST BEHIND', t:'Furthest behind: ' + ws.n + ' at ' + pc(ws.da) + ' of budget (' + nf1.format(ws.gap) + ' Cr).'}); }
   base.days = {left:wLeft, total:wTot, hol:hLeft, closed:closed, end:endTxt, last:last ? fdate(last) : '', off:offTxt};
   base.bud = r4(bud); base.budFull = r4(bT.full); base.frac = frac; base.kpis = kpis; base.banner = notes.join('  ');
-  base.mon = {budget:monB, order:monA(O), delivery:monA(D), collection:M.sOn ? null : monA(C)};
+  base.mon = {budget:monB, order:monA(O), delivery:monA(D), collection:BM.sOn ? null : monA(C)};
   base.segs = segs; base.cats = cats; base.behind = behind; base.ahead = ahead; base.ins = ins;
   base.ton = {b:r2(bTon), o:r2(oTon), oa:r4(ach(oTon, bTon)), d:r2(dTon), da:r4(ach(dTon, bTon))};
   base.info = 'Budget ' + Y + ': ' + nf1.format(bsum(one, 1, 'v').mon.reduce(function(a, v){ return a + v; }, 0)) + ' Cr for the year';
@@ -1343,8 +1357,9 @@ function opt(v, t, sel){ return '<option value="' + esc(v) + '"' + (String(sel) 
 function uniq(a){ var m = {}, o = []; a.forEach(function(x){ if (x && !m[x]) { m[x] = 1; o.push(x); } }); return o.sort(function(p, q){ return p.localeCompare(q); }); }
 function filterLists(){
   var cs = IX.R.cust.filter(function(c, i){ return c[6] && IX.cHas[i]; });   // only distributors that have data
-  var L = {bu:uniq(cs.map(function(c){ return c[2]; }))};
-  var a = cs.filter(function(c){ return !F.bu || c[2] === F.bu; });
+  var L = {bu:uniq(cs.map(function(c){ return c[2]; }).concat(FKEY === 'budget' ? [] : IX.seg.filter(function(g){ return !cs.some(function(c){ return c[2] === g; }); })))};      // plus product lines such as Wood Lacquer
+  if (FKEY === 'budget') L.bu = uniq(IX.seg.slice());                                                                                       // the budget is per product: its business units are the product lines
+  var a = cs.filter(function(c){ return !F.bu || prodBU() || c[2] === F.bu; });
   L.reg = uniq(a.map(function(c){ return regName(c[3]); }));
   if (F.reg && L.reg.indexOf(F.reg) < 0) F.reg = '';
   a = a.filter(function(c){ return !F.reg || regName(c[3]) === F.reg; });
@@ -1517,7 +1532,7 @@ function budSpec(i, E){
   if (i === 0) return {k:'BV', show:'b', sort:'b', title:'Sales budget · ' + p};
   if (i === 1) return {k:'BV', show:'o', sort:'o', title:'Order vs budget · ' + p};
   if (i === 2) return {k:'BV', show:'d', sort:'d', title:'Delivery vs budget · ' + p};
-  return F.cat ? null : {k:'C', bud:true, title:'Collection vs budget · ' + p};
+  return budMask(masks()).sOn ? null : {k:'C', bud:true, title:'Collection vs budget · ' + p};
 }
 function drillSpecs(key){
   // which data sits behind each tile of the current view (same order as the tiles on the page)
@@ -1911,8 +1926,9 @@ function emptyHTML(){
     (load ? '<div class="banner note" data-rise>Reading data.json…</div>' :
     '<div class="banner warn" data-rise>⚠  Could not read data.json. Upload data.json to the same GitHub repository as index.html and open the page from its GitHub Pages link. Press Update data for the steps.</div>');
 }
+var FKEY = '';
 function render(key){
-  DRL = []; DRT = [];
+  FKEY = key; DRL = []; DRT = [];
   if (!DATA) { EXTCH = []; stage.innerHTML = emptyHTML(); wireView(); updateChrome(key); return; }
   if (VIEWS.indexOf(key) > -1) { EXTCH = []; stage.innerHTML = renderView(key); drawMonthly(key); }
   else { stage.innerHTML = renderExt(key); drawExt(); }
@@ -2191,7 +2207,7 @@ var dr = {ov:$('#ovDr'), t:$('#drT'), s:$('#drS'), m:$('#drM'), q:$('#drQ'), w:$
 var nfT = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}), nfN = new Intl.NumberFormat('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
 function drillRows(spec){
   var X = IX, R = X.R, M = masks(), out = [];
-  if (spec.bud) { var all = new Uint8Array(R.cust.length); all.fill(1); M = {c:all, s:M.s, sOn:M.sOn, day:0}; }      // Budget page: customer and day filters do not apply there
+  if (spec.bud) { var all = new Uint8Array(R.cust.length), BM = budMask(M); all.fill(1); M = {c:all, s:BM.s, sOn:BM.sOn, day:0}; }      // Budget page: customer and day filters do not apply there
   if (spec.k === 'P') {
     (R.P || []).forEach(function(l){ if (!M.c[l[0]] || (M.sOn && !M.s[l[1]]) || (spec.pred && !spec.pred(l[0], l[1]))) return; out.push({ym:-1, c:l[0], s:l[1], a:l[4] * X.U, t:l[5] / 1000, age:l[3], ord:l[2]}); });
     return {rows:out, period:'open orders as of ' + DATA.ext.pending.asof};
@@ -2291,9 +2307,9 @@ function bvVal(col, o){ return col.s ? o[col.s] : (col.r ? (o[col.r[1]] > 0 ? o[
 function bvFmt(col, v){ return v == null ? '–' : (col.r ? nf1.format(v * 100) + '%' : (col.g ? (v >= 0 ? '+' : '−') + (col.t ? nfN : nfT).format(Math.abs(v)) : (col.t ? nfN : nfT).format(v))); }
 function bvCls(col, v){ return v == null ? '' : (col.r ? (v >= 1 ? 'hi' : (v < .9 ? 'lo' : '')) : (col.g ? (v >= 0 ? 'hi' : 'lo') : '')); }
 function bvRows(spec){
-  var X = IX, R = X.R, B = R.B, M = masks(), Y = F.year, U = X.U, map = {}, list = [];
+  var X = IX, R = X.R, B = R.B, M = masks(), BM = budMask(M), Y = F.year, U = X.U, map = {}, list = [];
   var pO = period('O', false), pD = period('D', false), pC = period('C', false);
-  var sOk = function(s){ return (!M.sOn || M.s[s]) && (!spec.pred || spec.pred(s)); };
+  var sOk = function(s){ return (!BM.sOn || BM.s[s]) && (!spec.pred || spec.pred(s)); };
   var mOk = function(pr, m){ return spec.month ? m === spec.month : !!pr.P[m]; };
   var row = function(ym, s){ var k = ym + '|' + s, e = map[k]; if (!e) { e = map[k] = {ym:ym, s:s, b:0, o:0, d:0, c:0, bt:0, ot:0, dt:0}; list.push(e); } return e; };
   if (B && B.ym) for (var i = 0; i < B.ym.length; i++) {
@@ -2307,7 +2323,7 @@ function bvRows(spec){
       var e = row(T.ym[i], T.s[i]); e[z[2]] += T.a[i] * U; e[z[3]] += T.t[i] / 1000;
     }
   });
-  var hasC = !M.sOn && !spec.pred;                       // collection is not recorded per product
+  var hasC = !BM.sOn && !spec.pred;                       // collection is not recorded per product
   if (hasC) { var T = R.C; for (var j = 0; j < T.ym.length; j++) { if (2000 + ((T.ym[j] / 12) | 0) !== Y || !mOk(pC, T.ym[j] % 12 + 1)) continue; row(T.ym[j], -1).c += T.a[j] * U; } }
   return {rows:list, hasC:hasC, period:spec.month ? MONL[spec.month - 1] + ' ' + Y : span(pO.pl, Y)};
 }
@@ -2355,14 +2371,14 @@ function openBV(spec){
   var got = bvRows(spec), modes = spec.month ? ['p', 'g', 'c', 's'] : ['p', 'g', 'c', 's', 'm'];
   DS = {spec:spec, bv:true, raw:got.rows, hasC:got.hasC, mode:'p'};
   dr.t.textContent = spec.title;
-  dr.s.textContent = got.period + (F.cat ? '  ·  Filter: ' + F.cat : '') + '  ·  ' + ({b:'Budget only.', o:'Budget against order.', d:'Budget against delivery.', ot:'Budget TON against order TON.', dt:'Budget TON against delivery TON.'}[spec.show] || 'Budget, order and delivery side by side. Gap = delivery − budget.') + ' Ach. = actual ÷ budget. The budget is set per product, so Business Unit, Region, Area, Base, Distributor and Day filters are not applied.';
+  dr.s.textContent = got.period + (F.cat || budSeg() ? '  ·  Filter: ' + [budSeg(), F.cat].filter(Boolean).join(' · ') : '') + '  ·  ' + ({b:'Budget only.', o:'Budget against order.', d:'Budget against delivery.', ot:'Budget TON against order TON.', dt:'Budget TON against delivery TON.'}[spec.show] || 'Budget, order and delivery side by side. Gap = delivery − budget.') + ' Ach. = actual ÷ budget. The budget is set per product, so Region, Area, Base, Distributor and Day filters are not applied; Business Unit means the product line.';
   dr.m.innerHTML = modes.map(function(m){ return opt(m, BVM[m].n, DS.mode); }).join('');
   dr.q.value = ''; dr.q.placeholder = 'Product, group, category, code…'; bvBuild(); dr.ov.classList.add('on');
 }
 function openDrill(spec){
   if (!IX || !spec) return;
   if (spec.k === 'BV') return openBV(spec);
-  var got = drillRows(spec), ft = spec.bud ? (F.cat || '') : filterText(), modes = drillModes(spec.k);
+  var got = drillRows(spec), ft = spec.bud ? [budSeg(), F.cat].filter(Boolean).join(' · ') : filterText(), modes = drillModes(spec.k);
   DS = {spec:spec, rows:got.rows, mode:modes[0]};
   dr.t.textContent = spec.title;
   dr.s.textContent = got.period + (ft ? '  ·  Filter: ' + ft.replace(/\s{2,}/g, ' ') : '') + '  ·  ' + (spec.k === 'P' ? 'Open order lines (ordered, not yet delivered).' : (IX.daily ? 'Daily' : 'Monthly') + ' totals per distributor' + (spec.k === 'C' ? '' : ' and product') + '. Single order lines are not kept in the dashboard.');

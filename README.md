@@ -174,6 +174,7 @@ The **Users** tab has three more columns: `BU`, `Region`, `Area`. They are added
 Year · Month · Period (YTD / MTD) · **Day** · Business Unit · Region · **Area** · **Base** · Distributor · Product Category.
 
 * **Day** shows one day of the month, for example 15: with Month = September it is 15 September 2026 against 15 September 2025; with Month = Auto and YTD it is the 15th of every month in the period. Choose **All** to switch it off. It does not apply to Pending delivery or to the Budget page.
+* **Business Unit** lists the BUs of your distributors (Adhesive, DOP, Thinner, Trading-HO) and also **Wood Lacquer**. Wood Lacquer is a product line sold through Thinner distributors, so it filters by product (`SKU_SEGMENT` of SKU_MASTER) instead of by distributor; collection is booked per distributor, so the page tells you it cannot be split by Wood Lacquer. On the **Budget vs actual** page the budget is per product, so Business Unit there always means the product line (Adhesive, DOP, Thinner, Wood Lacquer) and applies to budget, order and delivery.
 * **Base** is `BASE_NAME` of the customer master. It follows the Area you pick (Business Unit → Region → Area → Base → Distributor). After installing the new `Code.gs`, run **Dashboard → Update data now** once so the Base names are added to the data.
 
 ## Details behind the numbers
