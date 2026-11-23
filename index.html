@@ -629,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '23-Nov-2026 · v47';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '23-Nov-2026 · v48';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -984,7 +984,7 @@ function growthView(k, M){
 function extViews(M){
   var X = IX, R = X.R, Y = F.year;
   var pO = period('O', false), pD = period('D', false), pC = period('C', false);
-  var P = span(pO.pl, Y), Mc = {c:M.c, s:M.s, sOn:false, day:M.day};
+  var P = span(pO.pl, Y), wl = prodBU(), Mc = {c:wl ? new Uint8Array(M.c.length) : M.c, s:M.s, sOn:false, day:M.day};   // Wood Lacquer has no distributors, so no collection
   var one = function(){ return 0; };
   var O = roll('O', pO, one, 1, 'a', M), D = roll('D', pD, one, 1, 'a', M), C = roll('C', pC, one, 1, 'a', Mc);
   var OT = roll('O', pO, one, 1, 't', M), DT = roll('D', pD, one, 1, 't', M);
@@ -999,7 +999,7 @@ function extViews(M){
   var asof = fdate(pd([R.meta.order.lastAny, R.meta.delivery.lastAny, R.meta.collection.lastAny].sort().pop()));
   var mon = function(A, pr){ var a = []; for (var m = 1; m <= 12; m++) a.push(m <= pr.b ? r4(A.mon[m]) : null); return a; };
   var pmon = function(A, k){ var a = []; for (var m = 1; m <= 12; m++) a.push(pyCovered(k, Y, m) ? r4(A.pmon[m]) : null); return a; };
-  var catNote = M.sOn ? ' ' + pfn() + ' cannot be applied to collection (booked per customer), so collection here is for all products.' : '';
+  var catNote = wl ? ' Wood Lacquer has no collection of its own (collection is booked per distributor), so collection is zero here.' : M.sOn ? ' ' + pfn() + ' cannot be applied to collection (booked per customer), so collection here is for all products.' : '';
   // overview
   var gO = O.py[0] > 0 ? O.lc[0] / O.py[0] - 1 : null, gC = C.py[0] > 0 ? C.lc[0] / C.py[0] - 1 : null, gD = D.py[0] > 0 ? D.lc[0] / D.py[0] - 1 : null;
   var hl = [];
@@ -1012,7 +1012,8 @@ function extViews(M){
   if (cutO && (gO != null || gC != null)) hl.push({k:'info', t:'Same-date comparison: ' + MONL[cutO.m - 1] + ' is counted up to the ' + ordinal(cutO.day) + ' in both years (data up to ' + fdate(cutO.la) + ').'});
   else if (runO && (gO != null || gC != null)) hl.push({k:'info', t:MONL[pO.b - 1] + ' ' + Y + ' is still running (data up to ' + fdate(runO) + ') while ' + (Y - 1) + ' has the full month, so growth looks lower than it is.'});
   if (gD == null) hl.push({k:'info', t:'Delivery growth shows n/a until ' + (Y - 1) + ' delivery rows are added to the workbook.'});
-  if (M.sOn) hl.push({k:'info', t:pfn() + ' cannot be applied to collection (booked per customer); collection shows all products.'});
+  if (wl) hl.push({k:'info', t:'Wood Lacquer has no collection of its own: collection is booked per distributor and Wood Lacquer is sold through Thinner distributors.'});
+  else if (M.sOn) hl.push({k:'info', t:pfn() + ' cannot be applied to collection (booked per customer); collection shows all products.'});
   var overview = {title:'Executive Overview  ·  ' + P, sub:'ADHESIVE & GLUE DIVISION  ·  ORDER · DELIVERY · COLLECTION · VOLUME' + fsub,
     cmp:'Growth compared like-for-like with ' + (Y - 1) + '  ·  Value in Crore (1 Cr = 10,000,000 BDT)', info:'Data up to ' + asof, period:P,
     kpis:[kt('ORDER VALUE', O, pO), kt('DELIVERY VALUE', D, pD), kt('COLLECTION', C, pC), kt('SALES VOLUME (ORDER)', OT, pO, 'TON')],
