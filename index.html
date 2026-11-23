@@ -629,7 +629,7 @@ button.av{border:0;cursor:pointer;padding:0;transition:transform .2s,box-shadow 
 'use strict';
 /* Where the numbers come from. 'data.json' = the file next to this page in the same GitHub repository
    (GitHub Pages). To read it from another place use its full https link. */
-var PAGE_VERSION = '23-Nov-2026 · v46';      // shown at the bottom of every page and in the side menu, to check which index.html is live
+var PAGE_VERSION = '23-Nov-2026 · v47';      // shown at the bottom of every page and in the side menu, to check which index.html is live
 var DATA_URL = 'data.json';
 /* The link of the Cloudflare Worker (or of the Apps Script web app) comes from config.json  {"api":"https://....workers.dev"}.
    The page always asks for a user name and password and reads the data from Google after sign-in.
@@ -880,13 +880,14 @@ function growthView(k, M){
   var lab = {O:['Order','order value','sales orders','SALES ORDER VALUE (TOTAL AMOUNT)','Monthly order value (Cr)','Order value = "Total Amount" of SALES_ORDER by Order Date, in Crore. Segments and SKU groups come from SKU_MASTER (Product Code = ERP_SKU_CODE). The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer (DOP excluded).','Order value up to '],
              D:['Delivery','delivery value','deliveries','DELIVERY VALUE (W/O DISCOUNT)','Monthly delivery value (Cr)','Delivery value = "Delivery Amount W/O Discount" of DELIVERY_ORDER ("Delivery Amount" where that column is empty, as in 2025) by Delivery Date, in Crore. Segments and SKU groups come from SKU_MASTER (Product Code = ERP_SKU_CODE). The Adhesive & Thinner tiles cover Adhesive, Thinner and Wood Lacquer (DOP excluded).','Delivery value up to '],
              C:['Collection','collection','collections','PRIMARY SALES COLLECTION','Monthly collection (Cr)','Collection = "Collection Amount" of PRIMARY_SALES_COLLECTION by Collection Date, in Crore. Business unit = BU of the customer in CUSTOMER_MASTER (Customer Code = Distributor Code). Top / Rest = customers of the Adhesive & Thinner BUs (DOP excluded). All collection types are counted, including commissions and bank charges.','Collection up to ']}[k];
-  var Mx = isC ? {c:M.c, s:M.s, sOn:false, day:M.day} : M;
+  var wl = isC && prodBU();                                  // product line (Wood Lacquer): no distributors, so no collection of its own
+  var Mx = isC ? {c:wl ? new Uint8Array(M.c.length) : M.c, s:M.s, sOn:false, day:M.day} : M;
   // groups: SKU groups (Order, Delivery) or customers in CUSTOMER_MASTER (Collection)
   var nG = isC ? R.cust.length : X.grp.length;
   var G = roll(k, pr, isC ? function(i, c){ return X.cIn[c] ? c : -1; } : function(i, c, s){ return X.sGrp[s]; }, nG, 'a', Mx);
   var N = roll(k, pr, function(){ return 0; }, 1, 'a', Mx);
   var gSeg = function(g){ return isC ? R.cust[g][2] : X.seg[X.grpSeg[g]]; };
-  var fb = F.bu && (!isC || !prodBU()) ? F.bu : '';          // the Business Unit filter, when it applies to this page
+  var fb = F.bu || '';                                         // the Business Unit filter
   var inScope = function(g){ var s = gSeg(g); return s && (s !== 'DOP' || fb === 'DOP'); };
   var scopeLab = fb ? fb : 'Adhesive & Thinner';
   var natCY = N.cy[0], natLC = N.lc[0], natPY = N.py[0];
@@ -919,7 +920,7 @@ function growthView(k, M){
     var four = ['Adhesive', 'Thinner', 'DOP', 'Trading-HO'], o4 = four.map(segO);
     var nm = {cy:natCY, lc:natLC, py:natPY}; o4.forEach(function(o){ nm.cy -= o.cy; nm.lc -= o.lc; nm.py -= o.py; });
     segs = four.map(function(n, i){ return segRow(n, o4[i], i); }).concat([segRow('Not in CUSTOMER_MASTER', {cy:Math.max(0, nm.cy), lc:Math.max(0, nm.lc), py:Math.max(0, nm.py)}, 4)]);
-    if (fb) segs = segs.filter(function(r){ return r.n === fb; });
+    if (fb) { segs = segs.filter(function(r){ return r.n === fb; }); if (!segs.length) segs = [segRow(fb, {cy:0, lc:0, py:0}, 0)]; }
   } else {
     var exRub = !fb || fb === 'Adhesive';
     tiles = [tile(natT, nat), tile(scopeLab.toUpperCase(), at), tile('TOP ' + pct + '% PRODUCTS', tp)].concat(exRub ? [tile('TOP ' + pct + '% · EX RUBBER ADHESIVE', tpx)] : [], [tile('REST ' + rp + '% PRODUCTS', rest)]);
@@ -954,8 +955,13 @@ function growthView(k, M){
   else if (F.month === 'auto' && F.span !== 'mtd' && pr.a > 1) ban.push('ℹ  Like-for-like from ' + MONL[pr.a - 1] + ': ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
   else if (!pr.same) ban.push('ℹ  Growth compares ' + span(pr.ll) + ' only: ' + (Y - 1) + ' ' + lab[2] + ' in the data start on ' + fdate(first) + '.');
   if (la && lany && lany > la && la.getFullYear() === Y && pr.b >= la.getMonth() + 1) ban.push((k === 'O' ? 'Total Amount' : 'The amount') + ' is blank for rows after ' + fdate(la) + ', so the report stops at ' + MONL[la.getMonth()] + ' ' + la.getFullYear() + '.');
-  if (isC && M.sOn) ban.push('ℹ  ' + pfn() + ' cannot be applied here: collection is booked per customer, not per product.');
-  if (M.any && natCY === 0 && natPY === 0) ban = ['⚠  Nothing matches this filter in ' + pcy + '. Change or reset the filters.'];
+  if (isC && M.sOn && !wl) ban.push('ℹ  ' + pfn() + ' cannot be applied here: collection is booked per customer, not per product.');
+  if (M.any && natCY === 0 && natPY === 0) {
+    var yrSum = 0; for (var mi = 1; mi <= 12; mi++) yrSum += N.mon[mi] || 0;
+    ban = [wl ? '⚠  Wood Lacquer has no collection of its own: collection is booked per distributor and Wood Lacquer is sold through Thinner distributors. Pick Thinner (or another BU), or reset the BU filter.'
+      : yrSum > 1e-9 ? '⚠  No ' + lab[2] + ' for this filter in ' + pcy + ', but there are ' + lab[2] + ' in other months of ' + Y + ' (see the monthly chart). Choose Period = Year to date, or another month.'
+      : '⚠  Nothing matches this filter in ' + pcy + '. Change or reset the filters.'];
+  }
   var ins = [];
   var gNat = natPY > 0 ? natLC / natPY - 1 : null, scope = isC ? 'customers' : 'products';
   ins.push({k:'OVERALL', t:gNat != null ? (M.any ? 'Filtered' : 'National') + ' ' + lab[1] + ' ' + (gNat >= 0 ? 'grew' : 'declined') + ' by ' + p0(gNat) + ' to ' + fcr(pr.same ? natCY : natLC) + ' Cr vs ' + fcr(natPY) + ' Cr in ' + (Y - 1) + ' (' + span(pr.ll, Y) + ').'
